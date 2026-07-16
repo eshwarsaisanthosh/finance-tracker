@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Plaid Link</h1>
+  <p>If you don't see the popup, refresh the page.</p>
+  
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <script>
+    // Replace with your current link_token
+    const linkToken = 'link-sandbox-c3c7f9d8-b060-4577-a949-186955991b39';
+
+    const handler = Plaid.create({
+      token: linkToken,
+      onSuccess: (public_token, metadata) => {
+        // This forces a pop-up box that won't go away until you click OK
+        alert("Success! Copy your public_token: " + public_token);
+      },
+      onExit: (err, metadata) => {
+        if (err) console.log(err);
+      },
+    });
+    
+    handler.open();
+  </script>
+</body>
+</html>
+
