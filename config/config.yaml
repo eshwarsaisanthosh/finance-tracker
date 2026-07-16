@@ -5,7 +5,7 @@ app_settings:
 
 accounts:
   - name: "Chase Credit Card"
-    id: "PASTE_YOUR_ACCESS_TOKEN_HERE"
+    id: "access-sandbox-0d8a2b00-4458-4219-b7ef-5b289956e652"
     include_in_total: true
 
 transfer_filters:
