@@ -1,6 +1,7 @@
 app_settings:
   check_frequency: "daily"
   report_currency: "USD"
+  plaid_env: "sandbox"
 
 accounts:
   - name: "Chase Credit Card"
