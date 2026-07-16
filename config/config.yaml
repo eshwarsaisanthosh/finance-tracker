@@ -1,0 +1,14 @@
+app_settings:
+  check_frequency: "daily"
+  report_currency: "USD"
+
+accounts:
+  - name: "Chase Credit Card"
+    id: "PASTE_YOUR_ACCESS_TOKEN_HERE"
+    include_in_total: true
+
+transfer_filters:
+  keywords:
+    - "PAYMENT TO"
+    - "TRANSFER"
+    - "CREDIT CARD BILL"

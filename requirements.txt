@@ -1,0 +1,9 @@
+nulltype==2.3.1
+numpy==2.5.1
+pandas==3.0.3
+plaid-python==40.1.0
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+PyYAML==6.0.3
+six==1.17.0
+urllib3==2.7.0
