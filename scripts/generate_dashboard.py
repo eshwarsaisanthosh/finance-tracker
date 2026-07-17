@@ -2,19 +2,16 @@
 
 Reads transactions (live from Plaid over the last N days, or from an enriched
 CSV via --from-csv), computes the model, and writes one standalone HTML file
-with the data embedded. No server, no external assets — drop it in a synced
-folder and open on your phone.
+with the data embedded. No server, no external assets.
 
 Usage:
-  python -m scripts.generate_dashboard                 # live, last 100 days
+  python -m scripts.generate_dashboard                 # live, last ~100 days
   python scripts/generate_dashboard.py --from-csv data/transactions.csv
   python scripts/generate_dashboard.py --from-csv f.csv --today 2026-07-16
 """
 import argparse
-import calendar as calmod
 import csv
 import datetime
-import json
 
 import _bootstrap  # noqa: F401
 from _bootstrap import PROJECT_ROOT
@@ -41,25 +38,22 @@ def _round(x):
 
 
 def compute_model(rows, today=None, keywords=None):
-    """Build the dashboard model dict from normalized rows."""
+    """Build the dashboard model.
+
+    Month-scoped data (calendar, hero, per-month stats) comes from
+    `dailyByDate` / `detailByDate`. The `by account` and `top categories`
+    panels are a fixed rolling-90-day view (`rolling90`).
+    """
     today = today or datetime.date.today()
     keywords = _keywords() if keywords is None else keywords
 
-    y, m = today.year, today.month
-    days_in_month = calmod.monthrange(y, m)[1]
-    offset = (calmod.monthrange(y, m)[0] + 1) % 7  # Sunday-first column index
-
     base = {
         "generatedAt": datetime.datetime.now().isoformat(timespec="minutes"),
-        "year": y, "month": m,
-        "monthName": calmod.month_name[m],
-        "daysInMonth": days_in_month,
-        "offset": offset,
-        "todayDay": today.day,
+        "today": {"y": today.year, "m": today.month, "d": today.day},
         "windowDays": WINDOW_DAYS,
-        "mtd": 0, "pacePct": None, "dailyAvg90": 0, "projected": 0,
-        "dailySpend": {}, "cumulative": [], "heat": [25, 60, 120],
-        "categories": [], "detail": {},
+        "minDate": None, "maxDate": None,
+        "dailyByDate": {}, "detailByDate": {},
+        "rolling90": {"total": 0, "dailyAvg": 0, "categories": [], "accounts": []},
     }
 
     df = filter_expenses(rows, transfer_keywords=keywords)
@@ -69,55 +63,19 @@ def compute_model(rows, today=None, keywords=None):
     df = df.copy()
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.dropna(subset=["date"])
+    if df.empty:
+        return base
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0)
-    today_ts = pd.Timestamp(today)
+    df["ymd"] = df["date"].dt.strftime("%Y-%m-%d")
 
-    # --- current month ---
-    month_df = df[(df["date"].dt.year == y) & (df["date"].dt.month == m)
-                  & (df["date"] <= today_ts)]
-    mtd = float(month_df["amount"].sum())
+    # Month-scoped: spend + transactions keyed by full date.
+    daily = df.groupby("ymd")["amount"].sum()
+    base["dailyByDate"] = {k: _round(v) for k, v in daily.items()}
 
-    daily = month_df.groupby(month_df["date"].dt.day)["amount"].sum()
-    daily_spend = {int(d): _round(v) for d, v in daily.items()}
-
-    cumulative, run = [], 0.0
-    for d in range(1, today.day + 1):
-        run += float(daily.get(d, 0.0))
-        cumulative.append({"d": d, "v": _round(run)})
-
-    # heat thresholds from the month's non-zero day totals
-    vals = [v for v in daily.values if v > 0]
-    if len(vals) >= 3:
-        s = pd.Series(vals)
-        heat = [_round(s.quantile(0.4)), _round(s.quantile(0.7)), _round(s.quantile(0.9))]
-        heat = sorted(set(h for h in heat if h > 0)) or base["heat"]
-        while len(heat) < 3:
-            heat.append(heat[-1] + 1)
-    else:
-        heat = base["heat"]
-
-    # --- pace vs last month, same point ---
-    pm_y, pm_m = (y - 1, 12) if m == 1 else (y, m - 1)
-    lm_df = df[(df["date"].dt.year == pm_y) & (df["date"].dt.month == pm_m)
-               & (df["date"].dt.day <= today.day)]
-    lm_total = float(lm_df["amount"].sum())
-    pace = round((mtd - lm_total) / lm_total * 100) if lm_total > 0 else None
-
-    # --- rolling 90-day figures ---
-    win = df[df["date"] >= (today_ts - pd.Timedelta(days=WINDOW_DAYS - 1))]
-    total90 = float(win["amount"].sum())
-    daily_avg90 = _round(total90 / WINDOW_DAYS)
-    projected = _round(mtd / today.day * days_in_month) if today.day else 0
-
-    cats = (win.groupby("category")["amount"].sum()
-            .sort_values(ascending=False).head(5))
-    categories = [[str(k), _round(v)] for k, v in cats.items()]
-
-    # --- per-day, per-account detail (current month) ---
     detail = {}
-    for d, day_df in month_df.groupby(month_df["date"].dt.day):
+    for ymd, g in df.groupby("ymd"):
         items = []
-        for _, r in day_df.sort_values("amount", ascending=False).iterrows():
+        for _, r in g.sort_values("amount", ascending=False).iterrows():
             acct = str(r.get("account", "Unknown"))
             items.append({
                 "code": initials(acct),
@@ -126,14 +84,24 @@ def compute_model(rows, today=None, keywords=None):
                 "cat": str(r.get("category") or "Uncategorized"),
                 "amt": _round(r.get("amount", 0)),
             })
-        detail[str(int(d))] = items
+        detail[ymd] = items
+    base["detailByDate"] = detail
 
-    base.update({
-        "mtd": _round(mtd), "pacePct": pace, "dailyAvg90": daily_avg90,
-        "projected": projected, "dailySpend": daily_spend,
-        "cumulative": cumulative, "heat": heat,
-        "categories": categories, "detail": detail,
-    })
+    base["minDate"] = df["date"].min().strftime("%Y-%m-%d")
+    base["maxDate"] = df["date"].max().strftime("%Y-%m-%d")
+
+    # Rolling 90-day: account + category breakdowns.
+    today_ts = pd.Timestamp(today)
+    win = df[df["date"] >= (today_ts - pd.Timedelta(days=WINDOW_DAYS - 1))]
+    total90 = float(win["amount"].sum())
+    cats = win.groupby("category")["amount"].sum().sort_values(ascending=False).head(5)
+    accs = win.groupby("account")["amount"].sum().sort_values(ascending=False)
+    base["rolling90"] = {
+        "total": _round(total90),
+        "dailyAvg": _round(total90 / WINDOW_DAYS),
+        "categories": [[str(k), _round(v)] for k, v in cats.items()],
+        "accounts": [[str(k), _round(v), initials(str(k))] for k, v in accs.items()],
+    }
     return base
 
 
@@ -169,25 +137,18 @@ def main(argv=None):
     p.add_argument("--from-csv", dest="csv", help="Build from an enriched CSV")
     p.add_argument("--out", default=str(PROJECT_ROOT / "dashboard.html"))
     p.add_argument("--today", help="Override 'today' (YYYY-MM-DD), for testing")
-    p.add_argument("--days", type=int, default=WINDOW_DAYS + 10,
-                   help="How many days of history to pull (live mode)")
+    p.add_argument("--days", type=int, default=WINDOW_DAYS + 20,
+                   help="Days of history to pull (live mode)")
     args = p.parse_args(argv)
 
     today = datetime.date.fromisoformat(args.today) if args.today else None
-
-    if args.csv:
-        rows = load_from_csv(args.csv)
-    else:
-        rows = load_live(args.days)
+    rows = load_from_csv(args.csv) if args.csv else load_live(args.days)
 
     model = compute_model(rows, today=today)
-    html = render_html(model)
-
-    out = args.out
-    with open(out, "w", encoding="utf-8") as f:
-        f.write(html)
-    print(f"Dashboard written to {out}  (MTD ${model['mtd']:,}, "
-          f"{len(model['detail'])} active days)")
+    with open(args.out, "w", encoding="utf-8") as f:
+        f.write(render_html(model))
+    print(f"Dashboard written to {args.out}  (90d ${model['rolling90']['total']:,}, "
+          f"{len(model['detailByDate'])} active days)")
 
 
 if __name__ == "__main__":
