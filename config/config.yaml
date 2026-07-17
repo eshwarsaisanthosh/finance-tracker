@@ -1,13 +1,45 @@
 app_settings:
-  check_frequency: "daily"
   report_currency: "USD"
-  plaid_env: "sandbox"
+  # Fallback env ONLY. If PLAID_HOST is set in .env, that wins.
+  # Valid: sandbox | development | production
+  plaid_env: "production"
 
+# --- Accounts -------------------------------------------------------------
+# One entry per card. Toggle a card with 'enabled'. Secrets stay in .env;
+# here we only name the env var holding the token (access_token_env).
+#   access_token_env : name of the .env variable with this login's token
+#   account_ids      : optional; limit to specific card(s) under that login
+#                      (leave empty to include every card under the login)
 accounts:
-  - name: "Chase Credit Card"
-    id: "access-sandbox-0d8a2b00-4458-4219-b7ef-5b289956e652"
-    include_in_total: true
+  - name: "Delta SkyMiles Platinum"
+    access_token_env: PLAID_ACCESS_TOKEN
+    account_ids: ["Zz8qBnR9vMIxAj6Ra095UyeNbNDp4AUbzg1Lx"]
+    enabled: true
 
+  - name: "Corporate Card"
+    access_token_env: PLAID_ACCESS_TOKEN
+    account_ids: ["8p8KbAky1XCxdRDyM5qbUj47d7Z3YDfxmEMVr"]
+    enabled: false
+
+  # Example: a card on a SEPARATE bank login (its own token in .env)
+  # - name: "Chase Freedom"
+  #   access_token_env: PLAID_TOKEN_CHASE
+  #   enabled: false
+
+settings:
+  pull_all: false        # true = pull every account, ignoring the toggles above
+
+# --- Fetch behaviour ------------------------------------------------------
+fetch:
+  mode: range            # range (date window) | sync (incremental new charges)
+  window: last_7_days    # today | last_2_days | last_7_days | mtd | last_30_days | custom
+  custom:                # used only when window: custom
+    start_date:          # YYYY-MM-DD
+    end_date:            # blank = today
+    lookback_days:       # alternative to start_date (N days ending on end_date)
+
+# --- Report filtering -----------------------------------------------------
+# Name keywords used to drop non-spending rows (payments, transfers).
 transfer_filters:
   keywords:
     - "PAYMENT TO"

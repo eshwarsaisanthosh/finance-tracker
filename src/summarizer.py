@@ -1,32 +1,40 @@
-import pandas as pd
+"""Turn a cleaned expense DataFrame into a formatted text report."""
+
 
 def generate_summary(df):
-    """
-    Analyzes the DataFrame and returns a formatted string report.
-    """
-    if df.empty:
+    """Return a Markdown-ish summary suitable for an ntfy message."""
+    if df is None or df.empty:
         return "No new expenses found for this period."
 
-    # Sort data for the summary
-    df = df.sort_values(by='amount', ascending=False)
-    
-    total_spent = df['amount'].sum()
-    avg_spend = df['amount'].mean()
+    if "amount" not in df.columns:
+        return "Transactions were found but had no 'amount' field to summarize."
+
+    df = df.sort_values(by="amount", ascending=False)
+
+    total_spent = df["amount"].sum()
+    avg_spend = df["amount"].mean()
     transaction_count = len(df)
-    
-    # Header
+
+    multi_account = "account" in df.columns and df["account"].nunique() > 1
+
     lines = [
-        f"### 💸 Financial Summary",
+        "### 💸 Financial Summary",
         f"**Total Spent:** `${total_spent:,.2f}`",
         f"**Avg Transaction:** `${avg_spend:,.2f}`",
         f"**Count:** {transaction_count}",
-        "\n**Top 5 Expenses:**"
     ]
-    
-    # Top 5 items
+
+    if multi_account:
+        lines.append("\n**By Account:**")
+        by_acct = df.groupby("account")["amount"].sum().sort_values(ascending=False)
+        for acct, amt in by_acct.items():
+            lines.append(f"- {acct}: `${amt:,.2f}`")
+
+    lines.append("\n**Top 5 Expenses:**")
     for _, row in df.head(5).iterrows():
-        name = row.get('name', 'Unknown')[:20]
-        amount = row.get('amount', 0.0)
-        lines.append(f"- {name}: `${amount:,.2f}`")
-        
+        name = str(row.get("name") or "Unknown")[:20]
+        amount = row.get("amount", 0.0)
+        tag = f" ({row.get('account')})" if multi_account else ""
+        lines.append(f"- {name}{tag}: `${amount:,.2f}`")
+
     return "\n".join(lines)

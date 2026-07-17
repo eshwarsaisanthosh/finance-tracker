@@ -1,0 +1,11 @@
+"""Shared path bootstrap for standalone scripts.
+
+Importing this puts the project root on sys.path so `from src....` works
+regardless of where the script is launched from.
+"""
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))

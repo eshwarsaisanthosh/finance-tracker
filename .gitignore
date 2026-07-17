@@ -1,4 +1,30 @@
-.venv/
+# Secrets — never commit
 .env
+.env.*
+!.env.example
+
+# Plaid sync state & fetched data
+config/cursor.txt
+config/cursors.json
+config/account_map.json
+data/
+
+# Python
 __pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# OS / editor
 .DS_Store
+.idea/
+.vscode/
+
+# Generated dashboards (contain financial data)
+dashboard.html
+dashboard_sample.html
+
+# Scheduled-run logs
+logs/
