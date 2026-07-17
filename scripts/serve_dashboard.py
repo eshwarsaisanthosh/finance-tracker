@@ -13,6 +13,7 @@ reach it from anywhere you'd add a tunnel + authentication — ask if you want
 that; exposing financial data publicly needs a login in front of it.
 """
 import argparse
+import errno
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer

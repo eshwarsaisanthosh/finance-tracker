@@ -21,13 +21,11 @@ accounts:
     account_ids: ["8p8KbAky1XCxdRDyM5qbUj47d7Z3YDfxmEMVr"]
     enabled: false
 
-  # A card on a SEPARATE bank login (its own token in .env).
-  # This login has both a credit card and a bank account. To track only the
-  # card, put its account_id below (find it with scripts/check_accounts.py).
-  # Leave account_ids empty to include everything under the login.
-  - name: "Wells Fargo Card"
+  # Separate login (own token). This login also exposes checking + savings;
+  # account_ids limits it to just the Reflect credit card.
+  - name: "Wells Fargo Reflect"
     access_token_env: PLAID_TOKEN_WELLSFARGO
-    account_ids: []   # <-- paste the CREDIT CARD account_id here
+    account_ids: ["KooVPVO0mrHKbBKPZAXBukpp8XDraVfDN6aZQ"]
     enabled: true
 
 settings:
@@ -49,3 +47,7 @@ transfer_filters:
     - "PAYMENT TO"
     - "TRANSFER"
     - "CREDIT CARD BILL"
+    - "OVERDRAFT"
+    - "ZELLE"
+    - "ACH PMT"
+    - "AUTOPAY"
