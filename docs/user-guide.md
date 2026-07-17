@@ -150,13 +150,28 @@ You should see a line like `[Chase Freedom] N transactions`.
 
 ---
 
-## 5. Running the Tracker Manually
+## 5. Running the Code
 
-All commands are run from the project root with the venv:
+All commands run from the project root with the venv:
 
 ```bash
 cd ~/dev/finance-tracker/finance-tracker
 ```
+
+### At a glance — the ways to run it
+
+| I want to… | Command | Details |
+|------------|---------|---------|
+| Send / preview the spend report | `.venv/bin/python -m src.main …` | §5 below |
+| Build the dashboard as an HTML file | `.venv/bin/python scripts/generate_dashboard.py` | §6 |
+| Open the dashboard as a live web app (Refresh button) | `.venv/bin/python scripts/serve_dashboard.py` | §6 |
+| Run everything automatically at 5 PM | launchd job (`run_daily.sh`) | §7 |
+| One-time setup / maintenance | scripts in `scripts/` | §5 utility scripts |
+
+Tip: run `source .venv/bin/activate` once per terminal session and you can drop
+the `.venv/bin/` prefix (just `python …`).
+
+### Run the spend report
 
 **Basic usage**
 
@@ -189,6 +204,21 @@ cd ~/dev/finance-tracker/finance-tracker
 | `--window <preset>` | `today`, `last_2_days`, `last_7_days`, `mtd`, `last_30_days`, `custom` |
 | `--start` / `--end` | Explicit date range (YYYY-MM-DD) |
 
+### Setup & utility scripts
+
+Occasional-use tools in `scripts/`, run with `.venv/bin/python scripts/<name>.py`:
+
+| Script | Purpose | When you'd use it |
+|--------|---------|-------------------|
+| `generate_link_token.py` | Create a Plaid Link token | Connecting a bank (§4) |
+| `exchange_token.py` | Exchange a public token for an access token | Connecting a bank (§4) |
+| `get_sandbox_token.py` | Mint a sandbox test token (no real bank) | Trying it without live data |
+| `check_accounts.py` | List account names + IDs under a login | Finding `account_id`s (§8) |
+| `save_account_map.py` | Save an account_id → name map into `config/` | Optional labelling |
+| `export_transactions.py` | Export enriched transactions to `data/transactions.csv` | Archiving / CSV-mode dashboard |
+| `backfill.py` | Pull up to ~2 years of history | One-time historical import |
+| `sync_transactions.py` | Run the incremental sync and print the count | Debugging sync mode |
+
 ---
 
 ## 6. The Dashboard
@@ -204,7 +234,39 @@ covering roughly the last 100 days.
 
 This writes `dashboard.html` to the project root. Open it in any browser.
 
-**View on your phone**
+Options:
+
+| Flag | Effect |
+|------|--------|
+| `--from-csv <path>` | Build from an exported CSV instead of a live Plaid pull |
+| `--out <path>` | Write the HTML somewhere other than `dashboard.html` |
+| `--days <n>` | Days of history to pull (live mode; default ~110) |
+| `--today <YYYY-MM-DD>` | Override "today" (for testing) |
+
+**Serve it as a live web app (working Refresh button)**
+
+Instead of a static file, run the dashboard as a small local server. Its
+Refresh button pulls fresh data from Plaid on demand and re-renders in place —
+no waiting for the daily job:
+
+```bash
+.venv/bin/python scripts/serve_dashboard.py          # http://127.0.0.1:8000 (this Mac only)
+.venv/bin/python scripts/serve_dashboard.py --host 0.0.0.0        # reachable on home Wi-Fi
+.venv/bin/python scripts/serve_dashboard.py --from-csv data/transactions.csv   # no Plaid
+```
+
+| Flag | Effect |
+|------|--------|
+| `--host 0.0.0.0` | Expose on your LAN; visit `http://<mac-ip>:8000` from your phone |
+| `--port <n>` | Serve on a different port (default 8000) |
+| `--from-csv <path>` | Serve from a CSV (no live Plaid calls) |
+
+Home network only — reaching it from anywhere needs a tunnel plus a login
+(it's your bank data). The same `dashboard.html` works both ways: served, the
+Refresh button does a live pull; opened as a static file, it falls back to a
+plain reload.
+
+**View on your phone (static file)**
 
 Edit `scripts/run_daily.sh` and set `DASHBOARD_DEST` to a folder that syncs to
 your phone (iCloud Drive, Dropbox, OneDrive, or Google Drive). The daily job
