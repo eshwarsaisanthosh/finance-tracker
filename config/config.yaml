@@ -21,10 +21,14 @@ accounts:
     account_ids: ["8p8KbAky1XCxdRDyM5qbUj47d7Z3YDfxmEMVr"]
     enabled: false
 
-  # Example: a card on a SEPARATE bank login (its own token in .env)
-  # - name: "Chase Freedom"
-  #   access_token_env: PLAID_TOKEN_CHASE
-  #   enabled: false
+  # A card on a SEPARATE bank login (its own token in .env).
+  # This login has both a credit card and a bank account. To track only the
+  # card, put its account_id below (find it with scripts/check_accounts.py).
+  # Leave account_ids empty to include everything under the login.
+  - name: "Wells Fargo Card"
+    access_token_env: PLAID_TOKEN_WELLSFARGO
+    account_ids: []   # <-- paste the CREDIT CARD account_id here
+    enabled: true
 
 settings:
   pull_all: false        # true = pull every account, ignoring the toggles above

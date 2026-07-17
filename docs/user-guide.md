@@ -65,6 +65,16 @@ PLAID_ACCESS_TOKEN=access-production-xxxxxxxx
 NTFY_TOPIC=your-topic-name
 ```
 
+> `PLAID_ITEM_ID` is optional and is **not** needed to fetch transactions —
+> the access token is all that's required. You do not add an item ID per
+> account.
+
+The variable name you choose here (e.g. `PLAID_TOKEN_WELLSFARGO`) must match
+the `access_token_env` value in `config.yaml` exactly, or the account is
+skipped. If an enabled account's token is missing, the app now prints a
+warning like `⚠️ Wells Fargo Card: token 'PLAID_TOKEN_WELLSFARGO' is not set
+in .env — skipping this account.`
+
 ### `config.yaml` — accounts and behaviour
 
 Key sections:
@@ -340,6 +350,21 @@ To find the `account_id` values for a login, run:
 
 ```bash
 .venv/bin/python scripts/check_accounts.py
+```
+
+This lists every account under each configured login, with its type/subtype
+(e.g. `credit` vs `depository`) and `account_id`.
+
+**Excluding a bank account under the same login** — many logins expose a
+credit card *and* a checking/savings account together (they share one token).
+To track only the card, copy the card's `account_id` (the `type=credit` one)
+into that entry's `account_ids`:
+
+```yaml
+  - name: "Wells Fargo Card"
+    access_token_env: PLAID_TOKEN_WELLSFARGO
+    account_ids: ["<credit_card_account_id>"]   # bank account now excluded
+    enabled: true
 ```
 
 ---

@@ -23,14 +23,23 @@ from src.plaid_client import get_plaid_client
 CURSORS_FILE = PROJECT_ROOT / "config" / "cursors.json"
 
 
-def get_active_accounts(config):
+def get_active_accounts(config, warn=True):
     """Accounts to pull: all if settings.pull_all, else those enabled.
 
-    Only accounts with a resolved token are returned.
+    Only accounts with a resolved token are returned. Enabled accounts whose
+    token is missing from .env are warned about (a common config mistake)
+    rather than silently skipped.
     """
     pull_all = config["settings"]["pull_all"]
     selected = [a for a in config["accounts"] if pull_all or a["enabled"]]
-    return [a for a in selected if a["access_token"]]
+    active = []
+    for a in selected:
+        if a["access_token"]:
+            active.append(a)
+        elif warn:
+            print(f"⚠️  {a['name']}: token '{a['access_token_env']}' "
+                  "is not set in .env — skipping this account.")
+    return active
 
 
 def _to_dict(txn, account_name):
