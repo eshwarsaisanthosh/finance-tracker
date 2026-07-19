@@ -6,6 +6,8 @@ Examples:
   python -m src.main --start 2026-06-01 --end 2026-06-30
   python -m src.main --sync                   # incremental "new charges" mode
   python -m src.main --pull-all --no-notify   # every account, print only
+  python -m src.main --whatsapp               # send report via WhatsApp (Twilio)
+  python -m src.main --whatsapp --no-notify   # WhatsApp only, skip ntfy
 """
 import argparse
 
@@ -15,6 +17,7 @@ from src.fetcher import fetch_all_transactions
 from src.processor import filter_expenses
 from src.summarizer import generate_summary
 from src.notifier import send_ntfy_alert
+from src.whatsapp_notifier import send_whatsapp_alert
 
 
 def parse_args(argv=None):
@@ -30,6 +33,8 @@ def parse_args(argv=None):
                    help="Pull every account, ignoring 'enabled' toggles")
     p.add_argument("--no-notify", action="store_true",
                    help="Print the report but do not send an ntfy alert")
+    p.add_argument("--whatsapp", action="store_true",
+                   help="Also send the report via WhatsApp (requires Twilio env vars)")
     return p.parse_args(argv)
 
 
@@ -78,11 +83,16 @@ def main(argv=None):
     if clean_df.empty:
         print("No relevant expenses to report.")
         return
-    if args.no_notify:
-        print("(--no-notify set: skipping ntfy alert)")
+    if args.no_notify and not args.whatsapp:
+        print("(--no-notify set: skipping all notifications)")
         return
 
-    send_ntfy_alert(report, title="Finance Report")
+    if not args.no_notify:
+        send_ntfy_alert(report, title="Finance Report")
+
+    if args.whatsapp:
+        send_whatsapp_alert(report, title="Finance Report")
+
     print("✅ Report sent.")
 
 

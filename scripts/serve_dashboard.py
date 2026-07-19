@@ -94,7 +94,16 @@ def main(argv=None):
         print("WARNING: --host 0.0.0.0 exposes the dashboard to everyone on your "
               "network. Only do this on a trusted home Wi-Fi.")
 
-    server = ThreadingHTTPServer((a.host, a.port), make_handler(state))
+    try:
+        server = ThreadingHTTPServer((a.host, a.port), make_handler(state))
+    except OSError as e:
+        if e.errno == errno.EADDRINUSE:
+            print(f"Port {a.port} is already in use — another server is probably "
+                  f"still running.\n"
+                  f"  Stop it:  lsof -ti tcp:{a.port} | xargs kill\n"
+                  f"  Or pick another port:  --port {a.port + 1}")
+            return
+        raise
     print(f"Serving dashboard on http://{a.host}:{a.port}  (Ctrl-C to stop)")
     try:
         server.serve_forever()
