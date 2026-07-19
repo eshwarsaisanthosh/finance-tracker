@@ -35,6 +35,7 @@ just consumes a list of transactions.
 | `src/processor.py` | Clean transactions into a DataFrame, drop non-spend |
 | `src/summarizer.py` | Turn the DataFrame into the report text |
 | `src/notifier.py` | Send the report via ntfy |
+| `src/whatsapp_notifier.py` | Send the report via WhatsApp (CallMeBot) |
 | `src/enrich.py` | Normalize raw Plaid fields (category, merchant, initials) |
 | `src/template_dashboard.py` | Render the dashboard model into HTML |
 | `src/main.py` | CLI entry point; orchestrates the report pipeline |
@@ -115,6 +116,8 @@ tagged or normalized). Don't pass raw Plaid objects past the fetcher.
 | `PLAID_TOKEN_<NAME>` | One access token per bank login |
 | `PLAID_ACCESS_TOKEN` | Legacy single token; used if no `accounts` defined |
 | `NTFY_TOPIC` | ntfy topic for alerts |
+| `CALLMEBOT_PHONE` | WhatsApp number in E.164 format (optional, for `--whatsapp`) |
+| `CALLMEBOT_APIKEY` | CallMeBot API key (optional, for `--whatsapp`) |
 
 **`config.yaml`**:
 
@@ -180,10 +183,11 @@ cp .env.example .env    # then fill in real values
 Entry points:
 
 ```
-python -m src.main                     # report, config default window
+python -m src.main                          # report, config default window
 python -m src.main --window mtd --no-notify
-python -m src.main --sync              # incremental alert mode
-python scripts/generate_dashboard.py   # build dashboard.html (live)
+python -m src.main --sync                   # incremental alert mode
+python -m src.main --whatsapp               # also send via WhatsApp
+python scripts/generate_dashboard.py        # build dashboard.html (live)
 python scripts/generate_dashboard.py --from-csv data/transactions.csv
 ```
 

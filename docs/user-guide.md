@@ -43,7 +43,56 @@ python3 -m venv .venv
 
 ---
 
-## 3. Configuration
+## 3. Obtaining Plaid API Keys
+
+Before you can configure the app you need a Plaid developer account and an app
+registered in the Plaid dashboard. This is free for personal use (the Developer
+tier allows up to 100 Items).
+
+**Step 1 — Sign up**
+
+Go to [dashboard.plaid.com](https://dashboard.plaid.com/signup) and create an
+account. Use your personal email — no company information is required for the
+Developer tier.
+
+**Step 2 — Create an application**
+
+After signing in:
+
+1. Click **Team Settings → Keys** (or navigate directly to
+   [dashboard.plaid.com/team/keys](https://dashboard.plaid.com/team/keys)).
+2. Your `client_id` is shown at the top and is the same across all environments.
+3. Under **Secrets**, you'll see a secret for each environment (Sandbox,
+   Development, Production). Copy the one that matches the environment you
+   intend to use:
+   - **Sandbox** — free, uses fake test banks. Good for development.
+   - **Production** — real banks. Requires completing a brief questionnaire in
+     the Plaid dashboard (typically auto-approved for personal use).
+
+> **Tip:** Start with Sandbox. Run through the setup with a test bank first,
+> then switch `PLAID_HOST` to `https://production.plaid.com` and re-link with
+> your real bank when you're ready.
+
+**Step 3 — Enable the Transactions product**
+
+In the Plaid dashboard go to **API → Products** (or check during app
+creation) and ensure **Transactions** is enabled. This is the only product this
+app uses.
+
+**Step 4 — Add the credentials to `.env`**
+
+```env
+PLAID_CLIENT_ID=your_client_id       # same for all environments
+PLAID_SECRET=your_secret             # environment-specific
+PLAID_HOST=https://production.plaid.com   # or https://sandbox.plaid.com
+```
+
+That's it — you now have everything needed for Section 4 (Configuration) and
+Section 5 (Connecting a Bank Account).
+
+---
+
+## 4. Configuration
 
 Configuration is split across two files: `.env` for secrets and `config.yaml`
 for everything else.
@@ -58,11 +107,15 @@ PLAID_CLIENT_ID=your_client_id
 PLAID_SECRET=your_secret
 PLAID_HOST=https://production.plaid.com   # or https://sandbox.plaid.com
 
-# One line per bank login — see Section 4 for how to get these
+# One line per bank login — see Section 5 for how to get these
 PLAID_ACCESS_TOKEN=access-production-xxxxxxxx
 
 # ntfy topic for push alerts
 NTFY_TOPIC=your-topic-name
+
+# Optional: WhatsApp alerts via CallMeBot (see Section 6.3)
+# CALLMEBOT_PHONE=+1YOURNUMBER
+# CALLMEBOT_APIKEY=123456
 ```
 
 > `PLAID_ITEM_ID` is optional and is **not** needed to fetch transactions —
@@ -104,7 +157,7 @@ report (e.g. "PAYMENT TO", "TRANSFER"). Add any patterns your bank uses.
 
 ---
 
-## 4. Connecting a Bank Account
+## 5. Connecting a Bank Account
 
 Each bank login is a one-time setup. Do this in a single sitting — the tokens
 are short-lived.
@@ -160,7 +213,7 @@ You should see a line like `[Chase Freedom] N transactions`.
 
 ---
 
-## 5. Running the Code
+## 6. Running the Code
 
 All commands run from the project root with the venv:
 
@@ -172,11 +225,11 @@ cd ~/dev/finance-tracker/finance-tracker
 
 | I want to… | Command | Details |
 |------------|---------|---------|
-| Send / preview the spend report | `.venv/bin/python -m src.main …` | §5 below |
-| Build the dashboard as an HTML file | `.venv/bin/python scripts/generate_dashboard.py` | §6 |
-| Open the dashboard as a live web app (Refresh button) | `.venv/bin/python scripts/serve_dashboard.py` | §6 |
-| Run everything automatically at 5 PM | launchd job (`run_daily.sh`) | §7 |
-| One-time setup / maintenance | scripts in `scripts/` | §5 utility scripts |
+| Send / preview the spend report | `.venv/bin/python -m src.main …` | §6 below |
+| Build the dashboard as an HTML file | `.venv/bin/python scripts/generate_dashboard.py` | §7 |
+| Open the dashboard as a live web app (Refresh button) | `.venv/bin/python scripts/serve_dashboard.py` | §7 |
+| Run everything automatically at 5 PM | launchd job (`run_daily.sh`) | §8 |
+| One-time setup / maintenance | scripts in `scripts/` | §6 utility scripts |
 
 Tip: run `source .venv/bin/activate` once per terminal session and you can drop
 the `.venv/bin/` prefix (just `python …`).
@@ -213,6 +266,7 @@ the `.venv/bin/` prefix (just `python …`).
 | `--sync` | Incremental mode — only new charges since last run |
 | `--window <preset>` | `today`, `last_2_days`, `last_7_days`, `mtd`, `last_30_days`, `custom` |
 | `--start` / `--end` | Explicit date range (YYYY-MM-DD) |
+| `--whatsapp` | Also send the report via WhatsApp (requires CallMeBot setup — see §6.3) |
 
 ### Setup & utility scripts
 
@@ -229,9 +283,40 @@ Occasional-use tools in `scripts/`, run with `.venv/bin/python scripts/<name>.py
 | `backfill.py` | Pull up to ~2 years of history | One-time historical import |
 | `sync_transactions.py` | Run the incremental sync and print the count | Debugging sync mode |
 
+### 6.3 Optional: WhatsApp alerts via CallMeBot
+
+In addition to ntfy, the tracker can send reports to WhatsApp for free using
+[CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/) — no
+Twilio account or subscription required.
+
+**One-time setup**
+
+1. Save **+34 644 59 72 23** in your phone contacts as "CallMeBot".
+2. Send that number a WhatsApp message: `I allow callmebot to send me messages`
+3. CallMeBot replies with your personal API key (a 6-digit number).
+4. Add these two lines to your `.env`:
+
+```env
+CALLMEBOT_PHONE=+1YOURNUMBER   # your WhatsApp number in E.164 format
+CALLMEBOT_APIKEY=123456         # the key CallMeBot sent you
+```
+
+**Usage**
+
+```bash
+# Send via WhatsApp in addition to ntfy
+.venv/bin/python -m src.main --whatsapp
+
+# Send via WhatsApp only (skip ntfy)
+.venv/bin/python -m src.main --whatsapp --no-notify
+```
+
+The WhatsApp notifier caps messages at 3,000 characters and truncates with a
+note if the report is longer.
+
 ---
 
-## 6. The Dashboard
+## 7. The Dashboard
 
 The dashboard is a self-contained HTML file with charts and a transaction table
 covering roughly the last 100 days.
@@ -289,7 +374,7 @@ DASHBOARD_DEST="$HOME/Library/Mobile Documents/com~apple~CloudDocs/finance"
 
 ---
 
-## 7. Daily Automation
+## 8. Daily Automation
 
 The tracker runs automatically at **5:00 PM every day** via a macOS launchd
 job. Each run: rebuilds the dashboard, sends the sync alert, and (optionally)
@@ -318,7 +403,7 @@ launchctl unload ~/Library/LaunchAgents/com.eswarbandaru.finance-tracker.daily.p
 
 ---
 
-## 8. Managing Accounts
+## 9. Managing Accounts
 
 **Enable / disable an account** — flip `enabled` in `config.yaml`. No code
 changes needed:
@@ -369,7 +454,7 @@ into that entry's `account_ids`:
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
@@ -377,7 +462,7 @@ into that entry's `account_ids`:
 | `link_token` error in browser | Token expired (they're short-lived) | Regenerate with `generate_link_token.py` and redo immediately |
 | `public_token` exchange fails | Token expired (~30 min) or already used | Run through `index.html` again for a fresh one |
 | Wrong environment error | Token environment doesn't match `PLAID_HOST` | Make sure `PLAID_HOST` in `.env` matches the environment your tokens were issued in |
-| `ITEM_LOGIN_REQUIRED` | Bank credentials changed or MFA required | Re-run the Plaid Link flow for that account (steps 1–5 in Section 4) |
+| `ITEM_LOGIN_REQUIRED` | Bank credentials changed or MFA required | Re-run the Plaid Link flow for that account (steps 1–5 in Section 5) |
 | Sync returns nothing | Already caught up — no new transactions | Expected behaviour; use `--window` range mode to see recent history |
 | Daily job not running | launchd job not loaded | Run the `launchctl load` command in Section 7 |
 | Report includes transfers/payments | Keyword not in `transfer_filters` | Add the transaction description keyword to `config.yaml` under `transfer_filters.keywords` |
