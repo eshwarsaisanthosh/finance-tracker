@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+*.bak
 
 # Plaid sync state & fetched data
 config/cursor.txt
