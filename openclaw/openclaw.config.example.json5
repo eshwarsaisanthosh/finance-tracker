@@ -1,0 +1,32 @@
+// Example OpenClaw config for the constrained SLM finance agent.
+// Copy the relevant bits into your real ~/.openclaw/openclaw.json (or merge).
+// Values here are the CONSTRAINT levers that keep a small model reliable.
+{
+  // --- Model: a local SLM via Ollama -------------------------------------
+  // No API cost, fully local. Pick a small model that supports tool calling.
+  provider: "ollama",
+  model: "llama3.2:3b", // TODO(task-3): try a few; verify tool-calling first
+
+  generation: {
+    temperature: 0.1,            // near-deterministic (not 0.0 — avoids loops)
+    retry_on_parse_failure: true // re-prompt when the model malforms a call
+  },
+
+  // --- Tools: expose ONLY our one tool -----------------------------------
+  // Fewer tools -> far fewer wrong-tool errors. Deny everything else.
+  tools: {
+    allow: ["finance_spend"],
+    deny: ["exec", "web_fetch", "web_search"]
+  },
+
+  // --- Where our custom tool + skill live --------------------------------
+  // Point OpenClaw at this repo's openclaw/ folder (adjust the path).
+  toolRoots: ["~/dev/finance-tracker/finance-tracker/openclaw/tools"],
+  skillRoots: ["~/dev/finance-tracker/finance-tracker/openclaw/skills"],
+
+  skills: {
+    entries: {
+      "finance-query": { enabled: true }
+    }
+  }
+}

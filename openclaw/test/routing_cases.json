@@ -1,0 +1,20 @@
+{
+  "description": "Golden routing cases: natural-language question -> expected finance_spend args. Used by test_routing.py to measure how reliably the local SLM maps to enum-locked {category, window}. Defaults: category=all, window=last_7_days.",
+  "cases": [
+    {"q": "how much did I spend on dining in the last 7 days", "category": "dining", "window": "last_7_days"},
+    {"q": "what did I spend on restaurants this week", "category": "dining", "window": "last_7_days"},
+    {"q": "groceries today", "category": "groceries", "window": "today"},
+    {"q": "how much on groceries this month", "category": "groceries", "window": "mtd"},
+    {"q": "what's my total spending this month", "category": "all", "window": "mtd"},
+    {"q": "how much did I spend today", "category": "all", "window": "today"},
+    {"q": "travel spend over the last 30 days", "category": "travel", "window": "last_30_days"},
+    {"q": "how much on Ubers and transport this week", "category": "transport", "window": "last_7_days"},
+    {"q": "shopping this month so far", "category": "shopping", "window": "mtd"},
+    {"q": "how much did entertainment cost me in the past week", "category": "entertainment", "window": "last_7_days"},
+    {"q": "utility and rent bills last 30 days", "category": "bills_utilities", "window": "last_30_days"},
+    {"q": "medical expenses this month", "category": "medical", "window": "mtd"},
+    {"q": "how much on haircuts and personal care lately", "category": "personal_care", "window": "last_7_days"},
+    {"q": "total spend", "category": "all", "window": "last_7_days"},
+    {"q": "what did I blow on eating out this month", "category": "dining", "window": "mtd"}
+  ]
+}

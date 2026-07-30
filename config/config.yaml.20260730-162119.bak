@@ -36,10 +36,6 @@ accounts:
     access_token_env: PLAID_TOKEN_CAPITAL_ONE_AUTO_LOAN
     enabled: true
 
-  - name: "Chase - Marriot Card"
-    access_token_env: PLAID_TOKEN_CHASE_MARRIOT_CARD
-    enabled: true
-
 settings:
   pull_all: false        # true = pull every account, ignoring the toggles above
 

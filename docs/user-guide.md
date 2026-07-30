@@ -112,10 +112,6 @@ PLAID_ACCESS_TOKEN=access-production-xxxxxxxx
 
 # ntfy topic for push alerts
 NTFY_TOPIC=your-topic-name
-
-# Optional: WhatsApp alerts via CallMeBot (see Section 6.3)
-# CALLMEBOT_PHONE=+1YOURNUMBER
-# CALLMEBOT_APIKEY=123456
 ```
 
 > `PLAID_ITEM_ID` is optional and is **not** needed to fetch transactions —
@@ -266,7 +262,6 @@ the `.venv/bin/` prefix (just `python …`).
 | `--sync` | Incremental mode — only new charges since last run |
 | `--window <preset>` | `today`, `last_2_days`, `last_7_days`, `mtd`, `last_30_days`, `custom` |
 | `--start` / `--end` | Explicit date range (YYYY-MM-DD) |
-| `--whatsapp` | Also send the report via WhatsApp (requires CallMeBot setup — see §6.3) |
 
 ### Setup & utility scripts
 
@@ -283,36 +278,11 @@ Occasional-use tools in `scripts/`, run with `.venv/bin/python scripts/<name>.py
 | `backfill.py` | Pull up to ~2 years of history | One-time historical import |
 | `sync_transactions.py` | Run the incremental sync and print the count | Debugging sync mode |
 
-### 6.3 Optional: WhatsApp alerts via CallMeBot
+### 6.3 WhatsApp
 
-In addition to ntfy, the tracker can send reports to WhatsApp for free using
-[CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/) — no
-Twilio account or subscription required.
-
-**One-time setup**
-
-1. Save **+34 644 59 72 23** in your phone contacts as "CallMeBot".
-2. Send that number a WhatsApp message: `I allow callmebot to send me messages`
-3. CallMeBot replies with your personal API key (a 6-digit number).
-4. Add these two lines to your `.env`:
-
-```env
-CALLMEBOT_PHONE=+1YOURNUMBER   # your WhatsApp number in E.164 format
-CALLMEBOT_APIKEY=123456         # the key CallMeBot sent you
-```
-
-**Usage**
-
-```bash
-# Send via WhatsApp in addition to ntfy
-.venv/bin/python -m src.main --whatsapp
-
-# Send via WhatsApp only (skip ntfy)
-.venv/bin/python -m src.main --whatsapp --no-notify
-```
-
-The WhatsApp notifier caps messages at 3,000 characters and truncates with a
-note if the report is longer.
+WhatsApp is now handled by the separate OpenClaw agent (see `openclaw/`), which
+lets you *ask* spending questions over chat rather than only receiving a daily
+push. The old push integration has been retired.
 
 ---
 

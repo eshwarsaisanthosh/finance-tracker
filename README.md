@@ -1,8 +1,8 @@
 # finance-tracker
 
 A personal spend tracker that pulls transactions from bank accounts via
-[Plaid](https://plaid.com), sends a daily push alert via [ntfy](https://ntfy.sh)
-(and optionally WhatsApp), and generates a self-contained HTML dashboard.
+[Plaid](https://plaid.com), sends a daily push alert via [ntfy](https://ntfy.sh),
+and generates a self-contained HTML dashboard.
 
 Everything runs locally on your Mac. Your bank credentials never pass through
 this app — Plaid handles authentication on their side.
@@ -17,7 +17,7 @@ this app — Plaid handles authentication on their side.
 ## At a glance
 
 ```
-Plaid API → fetch transactions → filter non-spend → summarize → ntfy / WhatsApp alert
+Plaid API → fetch transactions → filter non-spend → summarize → ntfy alert
                                                              → dashboard.html
 ```
 

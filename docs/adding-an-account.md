@@ -1,7 +1,29 @@
 # Adding a new account
 
-Follow these six steps in one sitting (the link token expires quickly). The
-example adds a Chase card — swap in your own bank name.
+## The easy way: one command
+
+```
+cd ~/dev/finance-tracker/finance-tracker
+.venv/bin/python scripts/add_account.py
+```
+
+The wizard runs the whole flow for you: it generates the link token, injects it
+into `index.html` and opens your browser, exchanges the `public_token` you copy
+back, lets you pick which card(s) under the login to track, then writes the
+token to `.env` and the account entry to `config.yaml` — and offers a test run
+at the end. Your `.env` and `config.yaml` are backed up (timestamped `.bak`)
+before any edit.
+
+You only do three things by hand: log into your bank in the popup, paste the
+`public_token` when prompted, and type a name for the account. Do it in one
+sitting — the link token expires quickly.
+
+---
+
+## The manual way (fallback)
+
+Use this if the wizard fails or you'd rather do each step yourself. The example
+adds a Chase card — swap in your own bank name.
 
 Run all commands from the project root with your venv:
 `cd ~/dev/finance-tracker/finance-tracker`
