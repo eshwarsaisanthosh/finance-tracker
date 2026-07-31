@@ -164,6 +164,9 @@ def main(argv=None):
     p.add_argument("--today", help="Override 'today' (YYYY-MM-DD), for testing")
     p.add_argument("--days", type=int, default=WINDOW_DAYS + 20,
                    help="Days of history to pull (live mode)")
+    p.add_argument("--no-open", action="store_true",
+                   help="Don't open the dashboard in a browser afterwards "
+                        "(used by the headless daily job)")
     args = p.parse_args(argv)
 
     today = datetime.date.fromisoformat(args.today) if args.today else None
@@ -175,6 +178,16 @@ def main(argv=None):
     print(f"Dashboard written to {args.out}  "
           f"({len(model['transactions'])} transactions, "
           f"{len(model['accounts'])} account(s): {', '.join(model['accounts']) or '—'})")
+
+    if not args.no_open:
+        import os
+        import webbrowser
+        url = "file://" + os.path.abspath(args.out)
+        try:
+            webbrowser.open_new_tab(url)
+            print(f"Opening {url}")
+        except Exception as e:
+            print(f"(Could not auto-open a browser: {e})")
 
 
 if __name__ == "__main__":

@@ -40,6 +40,11 @@ accounts:
     access_token_env: PLAID_TOKEN_CHASE_MARRIOTT
     enabled: true
 
+  - name: "Sofi"
+    access_token_env: PLAID_TOKEN_SOFI
+    account_ids: ["bOq31aY5P9FLMRaKMBAQu37eM4rkEKC9OvDXw", "5Z9b50PxgriROv9aOmAEtqmJRpx940FVQz4ry"]
+    enabled: true
+
 settings:
   pull_all: false        # true = pull every account, ignoring the toggles above
 

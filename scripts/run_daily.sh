@@ -29,7 +29,8 @@ if [ ! -x "$PY" ]; then
 fi
 
 # 1. Rebuild the dashboard from the last ~100 days of live data.
-"$PY" scripts/generate_dashboard.py >> "$LOG" 2>&1 \
+#    --no-open: this runs headless under launchd, so don't launch a browser.
+"$PY" scripts/generate_dashboard.py --no-open >> "$LOG" 2>&1 \
   && echo "  dashboard OK" >> "$LOG" \
   || echo "  dashboard FAILED" >> "$LOG"
 
