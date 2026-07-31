@@ -1,0 +1,24 @@
+# ---------------------------------------------------------------------------
+# Example budgets. Copy to config/budgets.yaml and set your own targets:
+#
+#     cp config/budgets.example.yaml config/budgets.yaml
+#
+# (Also auto-created from this file on first run.) config/budgets.yaml is
+# gitignored, so your targets stay local. Edit here or use the dashboard's
+# "Edit" button (which writes back to config/budgets.yaml when served).
+#
+# Structure — per card, per category. The account name must match a `name`
+# from config.yaml. Categories are the tracker's set: Travel, Food and drink,
+# Merchandise, Services, Transportation, Medical, Entertainment, Bank fees.
+# Omit a category to show no target for it.
+# ---------------------------------------------------------------------------
+
+budgets:
+  "My Credit Card":
+    Travel: 500
+    Food and drink: 400
+    Merchandise: 300
+    Services: 200
+    Transportation: 150
+    Medical: 100
+    Entertainment: 50

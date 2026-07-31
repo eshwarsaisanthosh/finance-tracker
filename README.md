@@ -37,5 +37,21 @@ python3 -m venv .venv
 cp .env.example .env    # fill in your Plaid credentials and ntfy topic
 ```
 
+### Your config stays yours
+
+Personal settings live in files that are **not** committed, so pushing/pulling
+code never touches them and never publishes your accounts:
+
+| Committed template | Your local copy (gitignored) | Holds |
+|--------------------|------------------------------|-------|
+| `.env.example` | `.env` | Plaid + ntfy secrets |
+| `config/config.example.yaml` | `config/config.yaml` | your accounts + fetch settings |
+| `config/budgets.example.yaml` | `config/budgets.yaml` | your budget targets |
+| `config/account_map.example.json` | `config/account_map.json` | account_id → friendly names |
+
+On first run the app auto-creates `config.yaml` and `budgets.yaml` from their
+`.example` templates if they're missing (it never overwrites an existing one).
+Or copy them yourself: `cp config/config.example.yaml config/config.yaml`.
+
 See the [user guide](docs/user-guide.md) for full setup instructions, including
 [how to obtain your Plaid API keys](docs/user-guide.md#3-obtaining-plaid-api-keys).

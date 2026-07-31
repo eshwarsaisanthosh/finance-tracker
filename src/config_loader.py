@@ -7,6 +7,7 @@ that holds its Plaid access token. Tokens are secrets and never live in yaml.
 A single legacy PLAID_ACCESS_TOKEN is still honoured if no accounts are defined.
 """
 import os
+import shutil
 from pathlib import Path
 
 import yaml
@@ -14,12 +15,28 @@ from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_ROOT / "config" / "config.yaml"
+CONFIG_EXAMPLE = PROJECT_ROOT / "config" / "config.example.yaml"
 BUDGETS_PATH = PROJECT_ROOT / "config" / "budgets.yaml"
+BUDGETS_EXAMPLE = PROJECT_ROOT / "config" / "budgets.example.yaml"
 
 load_dotenv(PROJECT_ROOT / ".env")
 
 
+def _seed_from_example(real, example):
+    """On first run, create a personal config from its committed template.
+
+    The personal files (config.yaml, budgets.yaml) are gitignored, so a fresh
+    clone won't have them — copy the example so the app works out of the box
+    without ever overwriting an existing local file.
+    """
+    if not real.exists() and example.exists():
+        shutil.copy(example, real)
+        print(f"Created config/{real.name} from config/{example.name} — "
+              f"edit it with your own accounts.")
+
+
 def _load_yaml():
+    _seed_from_example(CONFIG_PATH, CONFIG_EXAMPLE)
     if not CONFIG_PATH.exists():
         return {}
     with open(CONFIG_PATH, "r") as f:
@@ -32,6 +49,7 @@ def load_budgets():
     Shape: {account_name: {category: monthly_target}}. Empty dict if the file
     is missing, so the dashboard degrades gracefully (no budget panels).
     """
+    _seed_from_example(BUDGETS_PATH, BUDGETS_EXAMPLE)
     if not BUDGETS_PATH.exists():
         return {}
     with open(BUDGETS_PATH, "r") as f:

@@ -1,0 +1,61 @@
+# ---------------------------------------------------------------------------
+# Example configuration. Copy this to config/config.yaml and fill in your own
+# accounts:
+#
+#     cp config/config.example.yaml config/config.yaml
+#
+# (The app also auto-creates config.yaml from this file on first run.)
+# config/config.yaml is gitignored, so your personal setup never gets pushed
+# and a `git pull` will never overwrite it.
+# ---------------------------------------------------------------------------
+
+app_settings:
+  report_currency: "USD"
+  # Fallback env ONLY. If PLAID_HOST is set in .env, that wins.
+  # Valid: sandbox | development | production
+  plaid_env: "production"
+
+# --- Accounts -------------------------------------------------------------
+# One entry per bank login. Secrets stay in .env; here we only name the env
+# var that holds each login's Plaid access token (access_token_env).
+#   access_token_env : name of the .env variable with this login's token
+#   account_ids      : optional; limit to specific sub-accounts under that
+#                      login (leave empty [] to include ALL of them).
+#                      Run `scripts/check_accounts.py` to list the IDs.
+accounts:
+  - name: "My Credit Card"
+    access_token_env: PLAID_ACCESS_TOKEN
+    account_ids: []          # [] = every card/sub-account under this login
+    enabled: true
+
+  # A second login with several sub-accounts (checking / savings / card).
+  # Leave account_ids empty to pull all of them, then map the IDs to friendly
+  # names in config/account_map.json so they group in the dashboard.
+  # - name: "Wells Fargo"
+  #   access_token_env: PLAID_TOKEN_WELLSFARGO
+  #   account_ids: []
+  #   enabled: true
+
+settings:
+  pull_all: false        # true = pull every account, ignoring the toggles above
+
+# --- Fetch behaviour ------------------------------------------------------
+fetch:
+  mode: range            # range (date window) | sync (incremental new charges)
+  window: last_7_days    # today | last_2_days | last_7_days | mtd | last_30_days | custom
+  custom:                # used only when window: custom
+    start_date:          # YYYY-MM-DD
+    end_date:            # blank = today
+    lookback_days:       # alternative to start_date (N days ending on end_date)
+
+# --- Report filtering -----------------------------------------------------
+# Name keywords used to drop non-spending rows (payments, transfers).
+transfer_filters:
+  keywords:
+    - "PAYMENT TO"
+    - "TRANSFER"
+    - "CREDIT CARD BILL"
+    - "OVERDRAFT"
+    - "ZELLE"
+    - "ACH PMT"
+    - "AUTOPAY"

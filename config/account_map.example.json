@@ -1,0 +1,6 @@
+{
+  "_comment": "Copy to config/account_map.json. Maps a Plaid account_id to a friendly sub-account name so checking/savings/cards group in the dashboard. Run scripts/check_accounts.py to list your account_ids.",
+  "REPLACE_WITH_ACCOUNT_ID_1": "Wells Fargo Checking",
+  "REPLACE_WITH_ACCOUNT_ID_2": "Wells Fargo Savings",
+  "REPLACE_WITH_ACCOUNT_ID_3": "Wells Fargo Reflect"
+}

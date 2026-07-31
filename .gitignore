@@ -4,10 +4,16 @@
 !.env.example
 *.bak
 
+# Personal config — kept local; copy the *.example.* templates and edit.
+# The *.example.* files ARE committed (they're the templates everyone shares).
+config/config.yaml
+config/budgets.yaml
+config/account_map.json
+config/*.bak
+
 # Plaid sync state & fetched data
 config/cursor.txt
 config/cursors.json
-config/account_map.json
 data/
 
 # Python
