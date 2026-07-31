@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spend Tracker — Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f4f3ef; --card:#ffffff; --card2:#faf9f5; --line:#e6e4dc;
+  --tx:#1c1b16; --tx2:#63625a; --tx3:#9b9a90;
+  --teal:#1a9467; --teal-bg:#e1f5ee; --teal-d:#0c6549;
+  --coral:#d85a30; --coral-bg:#fbe8e0;
+  --blue:#2f6fb0; --blue-bg:#e4eef8;
+  --amber:#c98a1a; --amber-bg:#f9efd9;
+  --purple:#6a5acd; --purple-bg:#ecebfa;
+  --pink:#c2557a; --pink-bg:#f9e6ee;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#141410; --card:#1f1f1b; --card2:#191915; --line:#2f2f29;
+    --tx:#f0efe9; --tx2:#a3a29a; --tx3:#6f6e66;
+    --teal:#4ec49a; --teal-bg:#0d3a2a; --teal-d:#7ad3b5;
+    --coral:#e8896a; --coral-bg:#3a1a0e;
+    --blue:#6fa8e0; --blue-bg:#13273d;
+    --amber:#e0ad55; --amber-bg:#3a2c10;
+    --purple:#9a8ce8; --purple-bg:#241f45;
+    --pink:#dd8aac; --pink-bg:#3a1826;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+.n{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.app{max-width:1200px;margin:0 auto;padding:22px 26px 70px}
+.sec-title{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--tx3);margin:26px 2px 12px}
+.sec-title:first-of-type{margin-top:14px}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
+.brand h1{font-size:19px;font-weight:650;letter-spacing:-.3px}
+.brand .sub{font-size:12px;color:var(--tx3)}
+.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:0.5px solid var(--line);background:var(--card);border-radius:20px;padding:6px 12px;font-size:12.5px;font-weight:500;color:var(--tx2);cursor:pointer;user-select:none;transition:all .12s}
+.chip.on{background:var(--teal-bg);border-color:var(--teal);color:var(--teal-d)}
+.chip .box{width:13px;height:13px;border-radius:3px;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}
+.chip.on .box::after{content:'✓'}
+.seg{display:flex;background:var(--card);border:0.5px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:none;background:transparent;color:var(--tx2);padding:7px 13px;font-size:12.5px;font-weight:500;cursor:pointer}
+.seg button.on{background:var(--teal);color:#fff}
+.run-btn{display:inline-flex;align-items:center;gap:6px;border:none;background:var(--teal);color:#fff;border-radius:9px;padding:8px 15px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.run-btn:hover{background:var(--teal-d)}
+.run-btn:disabled{opacity:.7;cursor:default}
+.run-btn .spin{display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mini-btn{border:0.5px solid var(--line);background:var(--card);color:var(--tx2);border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.mini-btn:hover{border-color:var(--teal);color:var(--teal-d)}
+.mini-btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+.mini-btn.primary:hover{background:var(--teal-d)}
+.bud-in{width:70px;font-size:12px;padding:4px 7px;border:0.5px solid var(--teal);border-radius:6px;background:var(--card2);color:var(--tx);font-family:inherit;font-variant-numeric:tabular-nums}
+.bud-in:focus{outline:none}
+
+/* Grid */
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(5,1fr)}
+.c2{grid-template-columns:1.5fr 1fr}
+.c2e{grid-template-columns:1fr 1fr}
+.c3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:920px){.kpis{grid-template-columns:repeat(2,1fr)}.c2,.c2e,.c3{grid-template-columns:1fr}}
+
+.card{background:var(--card);border:0.5px solid var(--line);border-radius:14px;padding:18px}
+.card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
+.card-h h3{font-size:14px;font-weight:600}
+.card-h .meta{font-size:11.5px;color:var(--tx3);white-space:nowrap}
+.label{font-size:10.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--tx3)}
+
+/* KPI */
+.kpi .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.kpi .ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.kpi .val{font-size:25px;font-weight:700;letter-spacing:-.8px;line-height:1}
+.kpi .cap{font-size:11.5px;color:var(--tx2);margin-top:6px}
+.up{color:var(--coral);font-weight:600}
+.down{color:var(--teal);font-weight:600}
+
+/* Bars */
+.bar{height:6px;background:var(--card2);border-radius:3px;overflow:hidden}
+.bar>span{display:block;height:6px;border-radius:3px;background:var(--teal)}
+
+/* Lists */
+.lrow{display:flex;align-items:center;gap:11px;padding:9px 0}
+.lrow+.lrow{border-top:0.5px solid var(--line)}
+.av{width:32px;height:32px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--tx2);flex-shrink:0}
+.lname{font-size:13px;font-weight:500}
+.lsub{font-size:11.5px;color:var(--tx3)}
+.legend-dot{width:9px;height:9px;border-radius:3px;display:inline-block;flex-shrink:0}
+
+/* Calendar */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cdow{text-align:center;font-size:10px;color:var(--tx3);padding-bottom:2px}
+.cell{aspect-ratio:1;border-radius:7px;background:var(--card2);display:flex;flex-direction:column;justify-content:space-between;padding:4px 5px}
+.cell .cd{font-size:9px}
+.cell .ca{font-size:9.5px;font-weight:700;text-align:right}
+.cell.future{opacity:.35}
+
+/* Insights */
+.ins{display:flex;gap:11px;padding:11px 0}
+.ins+.ins{border-top:0.5px solid var(--line)}
+.ins .ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.ins .t{font-size:13px;font-weight:600}
+.ins .d{font-size:12px;color:var(--tx2);margin-top:1px}
+
+/* Table */
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--tx3);padding:6px 8px;border-bottom:0.5px solid var(--line)}
+td{padding:9px 8px;font-size:13px;border-bottom:0.5px solid var(--line)}
+tr:last-child td{border-bottom:none}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.3px}
+.tright{text-align:right}
+.th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.th-sort:hover{color:var(--tx)}
+.th-sort .arr{font-size:9px;color:var(--teal)}
+.filter-row th{padding:6px 6px 10px;border-bottom:0.5px solid var(--line)}
+.fin{width:100%;font-size:12px;padding:6px 8px;border:0.5px solid var(--line);border-radius:7px;background:var(--card2);color:var(--tx);font-family:inherit}
+.fin:focus{outline:none;border-color:var(--teal)}
+.pager{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:16px;flex-wrap:wrap}
+.pbtn{min-width:30px;height:30px;padding:0 8px;border:0.5px solid var(--line);background:var(--card);color:var(--tx2);border-radius:7px;font-size:12.5px;font-weight:500;cursor:pointer;font-family:inherit}
+.pbtn:hover:not(:disabled){border-color:var(--teal);color:var(--teal-d)}
+.pbtn.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.pbtn:disabled{opacity:.4;cursor:default}
+.pdots{color:var(--tx3);padding:0 2px}
+.chart-wrap{position:relative;height:210px}
+.donut-wrap{position:relative;height:180px}
+.split{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:14px 0 12px}
+.split>span{height:12px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">$</div>
+      <div>
+        <h1>Spend Tracker</h1>
+        <div class="sub" id="updlbl">July 2026 · updated 2 hours ago</div>
+      </div>
+    </div>
+    <div class="controls">
+      <span class="chip on"><span class="box"></span>Delta SkyMiles</span>
+      <span class="chip on"><span class="box"></span>Wells Fargo Reflect</span>
+      <div class="seg">
+        <button>Month</button>
+        <button class="on">90 days</button>
+        <button>YTD</button>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="runRefresh()"><span id="runIco">▶</span> <span id="runTxt">Run</span></button>
+    </div>
+  </div>
+
+  <!-- At a glance -->
+  <div class="sec-title">At a glance</div>
+  <div class="grid kpis">
+    <div class="card kpi">
+      <div class="top"><span class="label">Spent this month</span><span class="ic" style="background:var(--teal-bg);color:var(--teal-d)">💳</span></div>
+      <div class="val n">$1,944</div>
+      <div class="cap"><span class="up">▲ 22%</span> vs last month</div>
+    </div>
+    <div class="card kpi" id="kpiLeft">
+      <div class="top"><span class="label">Left to spend</span><span class="ic" style="background:var(--teal-bg);color:var(--teal-d)">🎯</span></div>
+      <div class="val n">$1,256</div>
+      <div class="cap">of $3,200 budget</div>
+    </div>
+    <div class="card kpi" id="kpiProj">
+      <div class="top"><span class="label">Projected</span><span class="ic" style="background:var(--blue-bg);color:var(--blue)">📈</span></div>
+      <div class="val n">$3,767</div>
+      <div class="cap"><span class="up">$567 over</span> budget</div>
+    </div>
+    <div class="card kpi">
+      <div class="top"><span class="label">Daily avg</span><span class="ic" style="background:var(--amber-bg);color:var(--amber)">📅</span></div>
+      <div class="val n">$122</div>
+      <div class="cap">8 active days</div>
+    </div>
+    <div class="card kpi">
+      <div class="top"><span class="label">Recurring / mo</span><span class="ic" style="background:var(--purple-bg);color:var(--purple)">🔁</span></div>
+      <div class="val n">$177</div>
+      <div class="cap">4 subscriptions</div>
+    </div>
+  </div>
+
+  <!-- TRENDS -->
+  <div class="sec-title">Trends</div>
+  <div class="grid c2">
+    <div class="card">
+      <div class="card-h"><h3>Monthly spend</h3>
+        <span style="display:flex;align-items:center;gap:6px">
+          <span class="meta">break down by</span>
+          <select id="dim" class="fin" style="width:auto;padding:5px 8px">
+            <option value="category">Category</option>
+            <option value="merchant">Merchant</option>
+            <option value="account">Account</option>
+          </select>
+        </span>
+      </div>
+      <div class="chart-wrap"><canvas id="months"></canvas></div>
+      <div id="monthlegend" style="display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Pace this month</h3><span class="meta">cumulative vs last month</span></div>
+      <div class="chart-wrap"><canvas id="trend"></canvas></div>
+    </div>
+  </div>
+
+  <!-- WHERE IT GOES -->
+  <div class="sec-title">Where it goes</div>
+  <div class="grid c2">
+    <div class="card">
+      <div class="card-h"><h3>Daily spend — July</h3><span class="meta">darker = more</span></div>
+      <div class="cal" id="caldow"></div>
+      <div class="cal" id="calgrid" style="margin-top:5px"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>By category</h3><span class="meta">90 days · ▲▼ vs prior 90</span></div>
+      <div class="donut-wrap"><canvas id="donut"></canvas></div>
+      <div id="catlegend" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- BUDGETS -->
+  <div class="sec-title">Budgets &amp; overspending</div>
+  <div class="card">
+    <div class="card-h"><h3>Category budgets</h3>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span class="meta">spent · projected · target</span>
+        <button class="mini-btn" id="budEdit" onclick="toggleBudEdit()">✎ Edit</button>
+      </span>
+    </div>
+    <div id="budgets" class="grid c3" style="gap:22px"></div>
+    <div id="budActions" style="display:none;margin-top:16px;gap:8px;justify-content:flex-end">
+      <button class="mini-btn" onclick="cancelBud()">Cancel</button>
+      <button class="mini-btn primary" onclick="saveBud()">Save budgets</button>
+    </div>
+  </div>
+
+  <!-- SUBSCRIPTIONS -->
+  <div class="sec-title">Subscriptions &amp; recurring</div>
+  <div class="grid c2e">
+    <div class="card">
+      <div class="card-h"><h3>Active subscriptions</h3><span class="meta">$177/mo · $2,124/yr</span></div>
+      <div id="subs"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Recurring watch</h3><span class="meta">flags</span></div>
+      <div id="subflags"></div>
+    </div>
+  </div>
+
+  <!-- CASHFLOW & BIG ITEMS -->
+  <div class="sec-title">Cashflow &amp; big items</div>
+  <div class="grid c2">
+    <div class="card">
+      <div class="card-h"><h3>Biggest purchases</h3><span class="meta">90 days</span></div>
+      <div id="bigitems"></div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-h"><h3>By account</h3><span class="meta">90 days</span></div>
+        <div id="acctsplit"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Travel vs everyday</h3><span class="meta">90 days</span></div>
+        <div class="split" id="tvsplit"></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--tx2)">
+          <span><span class="legend-dot" style="background:var(--coral);vertical-align:middle"></span> Travel <b class="n" style="color:var(--tx)">$3,112</b> · 50%</span>
+          <span>Everyday <b class="n" style="color:var(--tx)">$3,115</b> · 50%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="sec-title">Activity</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h"><h3>Insights</h3><span class="meta">auto-detected</span></div>
+    <div id="insights"></div>
+  </div>
+
+  <!-- TRANSACTIONS -->
+  <div class="card">
+    <div class="card-h">
+      <h3>All transactions</h3>
+      <span class="meta" id="txcount"></span>
+    </div>
+    <table id="txtable">
+      <thead>
+        <tr>
+          <th data-sort="raw" class="th-sort">Date <span class="arr"></span></th>
+          <th data-sort="m" class="th-sort">Merchant <span class="arr"></span></th>
+          <th data-sort="cat" class="th-sort">Category <span class="arr"></span></th>
+          <th data-sort="a" class="th-sort">Acct <span class="arr"></span></th>
+          <th data-sort="v" class="th-sort tright">Amount <span class="arr"></span></th>
+        </tr>
+        <tr class="filter-row">
+          <th><select id="f-date" class="fin"><option value="">All dates</option></select></th>
+          <th><input id="f-m" class="fin" type="text" placeholder="Search merchant…"></th>
+          <th><select id="f-cat" class="fin"><option value="">All categories</option></select></th>
+          <th><select id="f-a" class="fin"><option value="">All</option></select></th>
+          <th><select id="f-v" class="fin"><option value="">Any amount</option><option value="500">≥ $500</option><option value="100">≥ $100</option><option value="50">≥ $50</option><option value="20">≥ $20</option></select></th>
+        </tr>
+      </thead>
+      <tbody id="txbody"></tbody>
+    </table>
+    <div id="txempty" style="display:none;text-align:center;color:var(--tx3);font-size:13px;padding:26px 0">No transactions match your filters.</div>
+    <div class="pager" id="txpager"></div>
+  </div>
+
+</div>
+
+<script>
+function cv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function money(n){return '$'+Math.round(n).toLocaleString();}
+
+let monthsChart=null;
+const DIMS={"labels": ["Feb", "Mar", "Apr", "May", "Jun", "Jul"], "category": [{"name": "Travel", "color": "--coral", "data": [840, 582, 1111, 529, 1805, 1680]}, {"name": "Services", "color": "--purple", "data": [606, 425, 527, 434, 1170, 35]}, {"name": "Food & drink", "color": "--teal", "data": [249, 237, 286, 187, 630, 88]}, {"name": "Merchandise", "color": "--blue", "data": [259, 238, 248, 169, 529, 104]}, {"name": "Medical", "color": "--pink", "data": [71, 62, 78, 46, 131, 0]}, {"name": "Bank fees", "color": "--tx3", "data": [18, 9, 20, 10, 0, 29]}, {"name": "Entertainment", "color": "--coral", "data": [4, 3, 5, 4, 9, 9]}, {"name": "Transportation", "color": "--amber", "data": [3, 3, 5, 3, 8, 0]}], "merchant": [{"name": "Ritz-Carlton", "color": "--coral", "data": [740, 435, 641, 451, 1422, 0]}, {"name": "Etihad Airways", "color": "--purple", "data": [515, 349, 486, 359, 0, 931]}, {"name": "Preply", "color": "--blue", "data": [403, 284, 531, 329, 811, 0]}, {"name": "Delta Air Lines", "color": "--teal", "data": [334, 302, 435, 328, 0, 750]}, {"name": "Amazon Marketplace", "color": "--amber", "data": [149, 92, 186, 79, 264, 65]}, {"name": "Amazon", "color": "--pink", "data": [125, 112, 122, 94, 256, 27]}, {"name": "Other", "color": "--tx3", "data": [604, 643, 990, 586, 1530, 172]}], "account": [{"name": "DSP", "color": "--teal", "data": [1759, 1033, 1836, 1132, 2924, 1805]}, {"name": "WF", "color": "--blue", "data": [718, 516, 908, 611, 1358, 140]}]};
+
+
+const CATS=[
+  {name:'Travel',v:3112,d:+34,c:'--coral'},
+  {name:'General services',v:1180,d:+12,c:'--purple'},
+  {name:'Merchandise',v:842,d:-8,c:'--blue'},
+  {name:'Food & drink',v:611,d:-18,c:'--teal'},
+  {name:'Transportation',v:322,d:+4,c:'--amber'},
+  {name:'Medical',v:160,d:-2,c:'--pink'}
+];
+const catTotal=CATS.reduce((a,b)=>a+b.v,0);
+document.getElementById('catlegend').innerHTML=CATS.map(c=>{
+  const pct=Math.round(c.v/catTotal*100);
+  const up=c.d>=0;
+  return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <span class="legend-dot" style="background:${cv(c.c)}"></span>
+    <span style="font-size:12.5px;flex:1">${c.name}</span>
+    <span style="font-size:11px;font-weight:600;color:${up?'var(--coral)':'var(--teal)'}">${up?'▲':'▼'}${Math.abs(c.d)}%</span>
+    <span class="n" style="font-size:12.5px;color:var(--tx2);width:56px;text-align:right">${money(c.v)}</span>
+    <span class="n" style="font-size:11px;color:var(--tx3);width:30px;text-align:right">${pct}%</span>
+  </div>`;
+}).join('');
+
+/* Calendar */
+const DOW=['S','M','T','W','T','F','S'];
+document.getElementById('caldow').innerHTML=DOW.map(d=>`<div class="cdow">${d}</div>`).join('');
+const spend={1:13,3:47,5:41,7:1013,8:9,9:64,11:775,12:38,13:21,14:38,15:88,16:52};
+const mx=1013,today=16,offset=3;
+let cal='';
+for(let i=0;i<offset;i++)cal+='<div></div>';
+for(let d=1;d<=31;d++){
+  if(d>today){cal+=`<div class="cell future"><span class="cd" style="color:var(--tx3)">${d}</span></div>`;continue;}
+  const v=spend[d]||0;let bg='var(--card2)',col='var(--tx3)',amt='';
+  if(v){const r=v/mx,alpha=Math.max(.16,Math.min(1,r));
+    bg=`color-mix(in srgb, ${cv('--teal')} ${Math.round(alpha*100)}%, var(--card2))`;
+    col=r>.4?'#fff':'var(--tx)';amt='$'+v;}
+  cal+=`<div class="cell" style="background:${bg}"><span class="cd" style="color:${col};opacity:.7">${d}</span><span class="ca" style="color:${col}">${amt}</span></div>`;
+}
+document.getElementById('calgrid').innerHTML=cal;
+
+
+/* Run / live refresh — in the mockup this simulates a Plaid pull.
+   In the real app this POSTs /api/refresh and re-renders from the response. */
+window.runRefresh=function(){
+  const btn=document.getElementById('runBtn');
+  const ico=document.getElementById('runIco');
+  const txt=document.getElementById('runTxt');
+  if(btn.disabled)return;
+  btn.disabled=true;
+  ico.textContent='↻'; ico.className='spin';
+  txt.textContent='Running…';
+  // Simulate fetch latency; real: fetch('/api/refresh',{method:'POST'})...
+  setTimeout(function(){
+    ico.className=''; ico.textContent='✓'; txt.textContent='Updated';
+    document.getElementById('updlbl').textContent='July 2026 · updated just now';
+    setTimeout(function(){
+      ico.textContent='▶'; txt.textContent='Run'; btn.disabled=false;
+    },1400);
+  },1200);
+};
+
+/* Budgets — editable + persisted */
+const BUD=[
+  {n:'Travel',spent:1150,proj:1900,cap:1200,c:'--coral'},
+  {n:'Food & drink',spent:310,proj:520,cap:700,c:'--teal'},
+  {n:'Merchandise',spent:242,proj:410,cap:500,c:'--blue'},
+  {n:'Services',spent:189,proj:340,cap:300,c:'--purple'},
+  {n:'Transportation',spent:96,proj:160,cap:250,c:'--amber'},
+  {n:'Medical',spent:60,proj:95,cap:150,c:'--pink'}
+];
+// Load saved caps (this file, opened locally, can persist targets)
+try{const saved=JSON.parse(localStorage.getItem('budgetCaps')||'{}');
+  BUD.forEach(b=>{if(saved[b.n]!=null)b.cap=saved[b.n];});}catch(e){}
+let budEditing=false;
+
+function renderBudgets(){
+  const el=document.getElementById('budgets');
+  el.innerHTML=BUD.map((b,i)=>{
+    const pct=Math.min(100,Math.round(b.spent/b.cap*100));
+    const projPct=Math.min(100,Math.round(b.proj/b.cap*100));
+    const over=b.proj>b.cap;
+    const fill=over?cv('--coral'):cv(b.c);
+    const capCell=budEditing
+      ? `<span style="display:inline-flex;align-items:center;gap:3px"><span style="color:var(--tx2);font-size:12px">${money(b.spent)} / $</span><input class="bud-in n" type="number" min="0" step="50" value="${b.cap}" data-i="${i}" oninput="onCapInput(${i},this.value)"></span>`
+      : `<span class="n" style="font-size:12px;color:var(--tx2)">${money(b.spent)} / ${money(b.cap)}</span>`;
+    return `<div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+        <span style="font-size:13px;font-weight:500">${b.n}</span>
+        ${capCell}
+      </div>
+      <div class="bar" style="height:8px;position:relative">
+        <span style="width:${pct}%;height:8px;background:${fill}"></span>
+        <span style="position:absolute;top:-2px;left:${projPct}%;width:2px;height:12px;background:var(--tx2);border-radius:1px" title="projected"></span>
+      </div>
+      <div style="font-size:11.5px;color:${over?'var(--coral)':'var(--tx3)'};margin-top:6px">
+        ${over?'⚠ projected '+money(b.proj)+' — '+money(b.proj-b.cap)+' over':money(Math.max(0,b.cap-b.spent))+' left · on track'}
+      </div>
+    </div>`;
+  }).join('');
+}
+window.onCapInput=function(i,v){BUD[i].cap=Math.max(0,parseInt(v)||0);};
+window.toggleBudEdit=function(){
+  budEditing=true;
+  document.getElementById('budEdit').style.display='none';
+  document.getElementById('budActions').style.display='flex';
+  renderBudgets();
+};
+window.cancelBud=function(){
+  try{const saved=JSON.parse(localStorage.getItem('budgetCaps')||'{}');
+    BUD.forEach(b=>{if(saved[b.n]!=null)b.cap=saved[b.n];});}catch(e){}
+  endBudEdit();
+};
+window.saveBud=function(){
+  const caps={};BUD.forEach(b=>caps[b.n]=b.cap);
+  try{localStorage.setItem('budgetCaps',JSON.stringify(caps));}catch(e){}
+  // reflect the new total budget in the KPI + insights
+  refreshBudgetKPIs();
+  endBudEdit();
+};
+function endBudEdit(){
+  budEditing=false;
+  document.getElementById('budEdit').style.display='';
+  document.getElementById('budActions').style.display='none';
+  renderBudgets();
+}
+function refreshBudgetKPIs(){
+  const totalCap=BUD.reduce((a,b)=>a+b.cap,0);
+  const totalSpent=BUD.reduce((a,b)=>a+b.spent,0);
+  const totalProj=BUD.reduce((a,b)=>a+b.proj,0);
+  const k=document.getElementById('kpiLeft');
+  if(k){k.querySelector('.val').textContent=money(Math.max(0,totalCap-1944));
+    k.querySelector('.cap').textContent='of '+money(totalCap)+' budget';}
+  const p=document.getElementById('kpiProj');
+  if(p){const over=totalProj>totalCap;
+    p.querySelector('.cap').innerHTML=over?'<span class="up">'+money(totalProj-totalCap)+' over</span> budget':'<span class="down">under budget</span>';}
+}
+renderBudgets();
+refreshBudgetKPIs();
+
+/* Subscriptions */
+const SUBS=[
+  {n:'Udacity',v:149.33,d:'renews Jul 15',ic:'🎓',c:'--purple'},
+  {n:'Google One',v:9.99,d:'renews Jul 15',ic:'☁️',c:'--blue'},
+  {n:'Netflix',v:8.99,d:'renews Aug 8',ic:'🎬',c:'--coral'},
+  {n:'iCloud+',v:8.99,d:'renews Aug 3',ic:'📱',c:'--teal'}
+];
+document.getElementById('subs').innerHTML=SUBS.map(s=>`
+  <div class="lrow">
+    <div class="av" style="background:var(${s.c}-bg);color:var(${s.c})">${s.ic}</div>
+    <div style="flex:1"><div class="lname">${s.n}</div><div class="lsub">${s.d}</div></div>
+    <div style="text-align:right"><div class="n" style="font-size:13px;font-weight:600">$${s.v.toFixed(2)}</div><div class="lsub n">$${(s.v*12).toFixed(0)}/yr</div></div>
+  </div>`).join('');
+
+const FLAGS=[
+  {ic:'⚠️',c:'--coral',t:'Udacity renews in 4 days',d:'$149.33 — your largest recurring charge. Still using it?'},
+  {ic:'📈',c:'--amber',t:'Netflix went up $2.50',d:'Was $6.49 in April, now $8.99.'},
+  {ic:'💡',c:'--blue',t:'Google One + iCloud+ overlap',d:'You pay for two cloud storage plans ($19/mo combined).'}
+];
+document.getElementById('subflags').innerHTML=FLAGS.map(f=>`
+  <div class="ins">
+    <div class="ic" style="background:var(${f.c}-bg);color:var(${f.c})">${f.ic}</div>
+    <div><div class="t">${f.t}</div><div class="d">${f.d}</div></div>
+  </div>`).join('');
+
+/* Biggest purchases */
+const BIG=[
+  {n:'Ritz-Carlton',v:1413.36,d:'Jun 25 · Travel',c:'--coral'},
+  {n:'Preply (tutoring)',v:810.66,d:'Jun 6 · Services',c:'--purple'},
+  {n:'Delta Air Lines',v:718.80,d:'Jul 11 · Travel',c:'--coral'},
+  {n:'Etihad Airways',v:709.47,d:'Jul 7 · Travel',c:'--coral'},
+  {n:'Enterprise Rent-A-Car',v:81.36,d:'Jun 13 · Travel',c:'--coral'}
+];
+document.getElementById('bigitems').innerHTML=BIG.map((b,i)=>`
+  <div class="lrow">
+    <div class="av" style="background:var(${b.c}-bg);color:var(${b.c})">${i+1}</div>
+    <div style="flex:1"><div class="lname">${b.n}</div><div class="lsub">${b.d}</div></div>
+    <div class="n" style="font-size:14px;font-weight:700">${money(b.v)}</div>
+  </div>`).join('');
+
+/* Account split */
+const ACCTS=[{n:'Delta SkyMiles',v:4890,c:'--teal'},{n:'Wells Fargo Reflect',v:1337,c:'--blue'}];
+const atot=ACCTS.reduce((a,b)=>a+b.v,0);
+document.getElementById('acctsplit').innerHTML=ACCTS.map(a=>{
+  const pct=Math.round(a.v/atot*100);
+  return `<div style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:12.5px"><span class="legend-dot" style="background:var(${a.c});vertical-align:middle;margin-right:6px"></span>${a.n}</span>
+      <span class="n" style="font-size:12.5px;color:var(--tx2)">${money(a.v)} · ${pct}%</span>
+    </div>
+    <div class="bar" style="height:7px"><span style="width:${pct}%;height:7px;background:var(${a.c})"></span></div>
+  </div>`;
+}).join('');
+
+/* Travel vs everyday split bar */
+document.getElementById('tvsplit').innerHTML=
+  `<span style="width:50%;background:var(--coral)"></span><span style="width:50%;background:var(--teal)"></span>`;
+
+/* Insights */
+const INS=[
+  {ic:'⚠️',c:'--coral',t:'Travel is 50% of 90-day spend',d:'$3,112 — mostly Ritz-Carlton, Delta, and Etihad in one trip.'},
+  {ic:'📈',c:'--amber',t:'This week up 34% vs last week',d:'$486 so far vs $362 the prior 7 days.'},
+  {ic:'🎯',c:'--coral',t:'Projected $567 over budget',d:'At current pace you\'ll hit $3,767 against a $3,200 target.'},
+  {ic:'✅',c:'--teal',t:'Food & drink down 18%',d:'$611 vs a 90-day monthly average of $744.'}
+];
+document.getElementById('insights').innerHTML=INS.map(i=>`
+  <div class="ins">
+    <div class="ic" style="background:var(${i.c}-bg);color:var(${i.c})">${i.ic}</div>
+    <div><div class="t">${i.t}</div><div class="d">${i.d}</div></div>
+  </div>`).join('');
+
+/* Transactions — interactive: sort, per-column filter, paginate */
+const TX=[{"d": "Jun 25", "raw": "2026-06-25", "m": "Ritz-Carlton", "cat": "Travel", "a": "DSP", "v": 1413.36, "c": "--coral"},
+{"d": "Jun 06", "raw": "2026-06-06", "m": "Preply", "cat": "Services", "a": "WF", "v": 810.66, "c": "--purple"},
+{"d": "Jul 11", "raw": "2026-07-11", "m": "Delta Air Lines", "cat": "Travel", "a": "DSP", "v": 718.8, "c": "--coral"},
+{"d": "Jul 07", "raw": "2026-07-07", "m": "Etihad Airways", "cat": "Travel", "a": "DSP", "v": 709.47, "c": "--coral"},
+{"d": "Jul 07", "raw": "2026-07-07", "m": "Etihad Airways", "cat": "Travel", "a": "DSP", "v": 221.3, "c": "--coral"},
+{"d": "Jun 17", "raw": "2026-06-17", "m": "Vue Testing", "cat": "Services", "a": "DSP", "v": 200.0, "c": "--purple"},
+{"d": "Jun 28", "raw": "2026-06-28", "m": "Udacity", "cat": "Services", "a": "DSP", "v": 149.33, "c": "--purple"},
+{"d": "Jun 04", "raw": "2026-06-04", "m": "IndiFresh", "cat": "Food & drink", "a": "DSP", "v": 126.62, "c": "--teal"},
+{"d": "Jun 13", "raw": "2026-06-13", "m": "Allergy & Asthma", "cat": "Medical", "a": "DSP", "v": 120.85, "c": "--pink"},
+{"d": "Jun 24", "raw": "2026-06-24", "m": "Uber Eats", "cat": "Food & drink", "a": "DSP", "v": 102.4, "c": "--teal"},
+{"d": "Jun 20", "raw": "2026-06-20", "m": "Hertz", "cat": "Travel", "a": "DSP", "v": 92.0, "c": "--coral"},
+{"d": "Jun 12", "raw": "2026-06-12", "m": "Hertz", "cat": "Travel", "a": "DSP", "v": 88.75, "c": "--coral"},
+{"d": "Jun 09", "raw": "2026-06-09", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 83.42, "c": "--blue"},
+{"d": "Jun 13", "raw": "2026-06-13", "m": "Enterprise Rent-A-Car", "cat": "Travel", "a": "DSP", "v": 81.36, "c": "--coral"},
+{"d": "Jun 17", "raw": "2026-06-17", "m": "Nuts.com", "cat": "Food & drink", "a": "DSP", "v": 64.83, "c": "--teal"},
+{"d": "Jun 20", "raw": "2026-06-20", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 45.57, "c": "--blue"},
+{"d": "Jun 22", "raw": "2026-06-22", "m": "Hertz", "cat": "Travel", "a": "DSP", "v": 42.77, "c": "--coral"},
+{"d": "Jun 05", "raw": "2026-06-05", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 41.32, "c": "--teal"},
+{"d": "Jun 23", "raw": "2026-06-23", "m": "Uber Eats", "cat": "Food & drink", "a": "DSP", "v": 40.61, "c": "--teal"},
+{"d": "Jun 28", "raw": "2026-06-28", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 39.47, "c": "--teal"},
+{"d": "Jul 07", "raw": "2026-07-07", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 36.29, "c": "--teal"},
+{"d": "Jun 23", "raw": "2026-06-23", "m": "T.G.I. Friday's", "cat": "Food & drink", "a": "DSP", "v": 35.16, "c": "--teal"},
+{"d": "Jun 25", "raw": "2026-06-25", "m": "Lidl", "cat": "Food & drink", "a": "DSP", "v": 34.84, "c": "--teal"},
+{"d": "Jul 12", "raw": "2026-07-12", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 32.09, "c": "--blue"},
+{"d": "Jun 20", "raw": "2026-06-20", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 32.05, "c": "--blue"},
+{"d": "Jun 23", "raw": "2026-06-23", "m": "Uber Eats", "cat": "Food & drink", "a": "DSP", "v": 32.01, "c": "--teal"},
+{"d": "Jul 11", "raw": "2026-07-11", "m": "Delta Air Lines", "cat": "Travel", "a": "DSP", "v": 30.8, "c": "--coral"},
+{"d": "Jun 20", "raw": "2026-06-20", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 30.5, "c": "--blue"},
+{"d": "Jul 15", "raw": "2026-07-15", "m": "Parakeet AI", "cat": "Services", "a": "WF", "v": 29.5, "c": "--purple"},
+{"d": "Jun 24", "raw": "2026-06-24", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 29.3, "c": "--blue"},
+{"d": "Jul 14", "raw": "2026-07-14", "m": "Return payment fee", "cat": "Bank fees", "a": "DSP", "v": 29.0, "c": "--tx2"},
+{"d": "Jul 07", "raw": "2026-07-07", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 27.52, "c": "--teal"},
+{"d": "Jun 23", "raw": "2026-06-23", "m": "Stellis News", "cat": "Travel", "a": "DSP", "v": 25.62, "c": "--coral"},
+{"d": "Jun 16", "raw": "2026-06-16", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 25.56, "c": "--blue"},
+{"d": "Jul 11", "raw": "2026-07-11", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 24.98, "c": "--blue"},
+{"d": "Jun 18", "raw": "2026-06-18", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 24.39, "c": "--blue"},
+{"d": "Jun 09", "raw": "2026-06-09", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 21.21, "c": "--blue"},
+{"d": "Jul 13", "raw": "2026-07-13", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 20.89, "c": "--blue"},
+{"d": "Jun 14", "raw": "2026-06-14", "m": "Car Rental Protection", "cat": "Travel", "a": "DSP", "v": 19.95, "c": "--coral"},
+{"d": "Jun 29", "raw": "2026-06-29", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 19.67, "c": "--blue"},
+{"d": "Jun 19", "raw": "2026-06-19", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 19.22, "c": "--blue"},
+{"d": "Jun 08", "raw": "2026-06-08", "m": "Uber Eats", "cat": "Food & drink", "a": "DSP", "v": 18.88, "c": "--teal"},
+{"d": "Jun 10", "raw": "2026-06-10", "m": "Walmart", "cat": "Food & drink", "a": "DSP", "v": 17.38, "c": "--teal"},
+{"d": "Jun 09", "raw": "2026-06-09", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 17.12, "c": "--blue"},
+{"d": "Jun 18", "raw": "2026-06-18", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 17.11, "c": "--blue"},
+{"d": "Jun 28", "raw": "2026-06-28", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 16.04, "c": "--blue"},
+{"d": "Jun 09", "raw": "2026-06-09", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 15.8, "c": "--blue"},
+{"d": "Jun 27", "raw": "2026-06-27", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 15.45, "c": "--blue"},
+{"d": "Jul 07", "raw": "2026-07-07", "m": "Lidl", "cat": "Food & drink", "a": "DSP", "v": 15.35, "c": "--teal"},
+{"d": "Jun 22", "raw": "2026-06-22", "m": "IndiFresh", "cat": "Food & drink", "a": "DSP", "v": 15.12, "c": "--teal"},
+{"d": "Jun 20", "raw": "2026-06-20", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 12.83, "c": "--blue"},
+{"d": "Jun 07", "raw": "2026-06-07", "m": "HTA Atlanta", "cat": "Food & drink", "a": "DSP", "v": 11.0, "c": "--teal"},
+{"d": "Jun 18", "raw": "2026-06-18", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 10.69, "c": "--blue"},
+{"d": "Jun 09", "raw": "2026-06-09", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 10.69, "c": "--blue"},
+{"d": "Jun 20", "raw": "2026-06-20", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 10.29, "c": "--teal"},
+{"d": "Jun 24", "raw": "2026-06-24", "m": "ID Processing", "cat": "Medical", "a": "DSP", "v": 10.0, "c": "--pink"},
+{"d": "Jun 15", "raw": "2026-06-15", "m": "Google One", "cat": "Services", "a": "WF", "v": 9.99, "c": "--purple"},
+{"d": "Jun 18", "raw": "2026-06-18", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 9.62, "c": "--blue"},
+{"d": "Jun 14", "raw": "2026-06-14", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 9.62, "c": "--blue"},
+{"d": "Jun 30", "raw": "2026-06-30", "m": "Hertz", "cat": "Travel", "a": "DSP", "v": 9.5, "c": "--coral"},
+{"d": "Jun 20", "raw": "2026-06-20", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 9.14, "c": "--blue"},
+{"d": "Jun 19", "raw": "2026-06-19", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 9.14, "c": "--blue"},
+{"d": "Jun 25", "raw": "2026-06-25", "m": "Breezeway Cafe", "cat": "Travel", "a": "DSP", "v": 9.06, "c": "--coral"},
+{"d": "Jun 13", "raw": "2026-06-13", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 9.04, "c": "--teal"},
+{"d": "Jul 14", "raw": "2026-07-14", "m": "Amazon OneMed", "cat": "Merchandise", "a": "WF", "v": 9.0, "c": "--blue"},
+{"d": "Jun 14", "raw": "2026-06-14", "m": "Amazon OneMed", "cat": "Merchandise", "a": "WF", "v": 9.0, "c": "--blue"},
+{"d": "Jul 08", "raw": "2026-07-08", "m": "Netflix", "cat": "Entertainment", "a": "WF", "v": 8.99, "c": "--coral"},
+{"d": "Jun 08", "raw": "2026-06-08", "m": "Netflix", "cat": "Entertainment", "a": "WF", "v": 8.99, "c": "--coral"},
+{"d": "Jun 25", "raw": "2026-06-25", "m": "Ritz-Carlton", "cat": "Travel", "a": "DSP", "v": 8.52, "c": "--coral"},
+{"d": "Jun 25", "raw": "2026-06-25", "m": "Starbucks", "cat": "Food & drink", "a": "DSP", "v": 8.51, "c": "--teal"},
+{"d": "Jul 15", "raw": "2026-07-15", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 8.5, "c": "--teal"},
+{"d": "Jun 28", "raw": "2026-06-28", "m": "Station Square", "cat": "Travel", "a": "DSP", "v": 8.0, "c": "--coral"},
+{"d": "Jun 12", "raw": "2026-06-12", "m": "Shell", "cat": "Transportation", "a": "DSP", "v": 7.88, "c": "--amber"},
+{"d": "Jun 21", "raw": "2026-06-21", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 7.79, "c": "--blue"},
+{"d": "Jul 01", "raw": "2026-07-01", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 7.69, "c": "--blue"},
+{"d": "Jun 04", "raw": "2026-06-04", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 7.48, "c": "--blue"},
+{"d": "Jun 25", "raw": "2026-06-25", "m": "Cibo Express", "cat": "Travel", "a": "DSP", "v": 6.59, "c": "--coral"},
+{"d": "Jul 12", "raw": "2026-07-12", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 6.41, "c": "--blue"},
+{"d": "Jun 09", "raw": "2026-06-09", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 6.36, "c": "--blue"},
+{"d": "Jun 21", "raw": "2026-06-21", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 5.68, "c": "--teal"},
+{"d": "Jun 16", "raw": "2026-06-16", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 5.28, "c": "--blue"},
+{"d": "Jul 01", "raw": "2026-07-01", "m": "Google Cloud", "cat": "Services", "a": "DSP", "v": 5.02, "c": "--purple"},
+{"d": "Jun 30", "raw": "2026-06-30", "m": "Amazon Marketplace", "cat": "Merchandise", "a": "WF", "v": 4.87, "c": "--blue"},
+{"d": "Jun 20", "raw": "2026-06-20", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 4.62, "c": "--teal"},
+{"d": "Jun 23", "raw": "2026-06-23", "m": "Uber Eats", "cat": "Food & drink", "a": "DSP", "v": 4.25, "c": "--teal"},
+{"d": "Jun 18", "raw": "2026-06-18", "m": "Amazon", "cat": "Merchandise", "a": "WF", "v": 3.72, "c": "--blue"},
+{"d": "Jul 07", "raw": "2026-07-07", "m": "Walgreens", "cat": "Merchandise", "a": "DSP", "v": 2.7, "c": "--blue"},
+{"d": "Jun 14", "raw": "2026-06-14", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 2.64, "c": "--teal"},
+{"d": "Jun 23", "raw": "2026-06-23", "m": "Canteen Vending", "cat": "Food & drink", "a": "DSP", "v": 2.2, "c": "--teal"},
+{"d": "Jun 23", "raw": "2026-06-23", "m": "Canteen Vending", "cat": "Food & drink", "a": "DSP", "v": 2.1, "c": "--teal"},
+{"d": "Jun 20", "raw": "2026-06-20", "m": "Kroger", "cat": "Food & drink", "a": "DSP", "v": 1.44, "c": "--teal"}];
+
+const PER=10;
+let sortKey='v', sortDir=-1, page=1;
+
+// populate date + category + account filter options
+(function(){
+  const months=[...new Set(TX.map(t=>t.raw.slice(0,7)))].sort().reverse();
+  const fd=document.getElementById('f-date');
+  const MN=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  months.forEach(m=>{const [y,mo]=m.split('-');const o=document.createElement('option');o.value=m;o.textContent=MN[+mo]+' '+y;fd.appendChild(o);});
+  const cats=[...new Set(TX.map(t=>t.cat))].sort();
+  const fc=document.getElementById('f-cat');
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;fc.appendChild(o);});
+  const accts=[...new Set(TX.map(t=>t.a))].sort();
+  const fa=document.getElementById('f-a');
+  accts.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;fa.appendChild(o);});
+})();
+
+function applied(){
+  const dm=document.getElementById('f-date').value;
+  const mq=document.getElementById('f-m').value.trim().toLowerCase();
+  const cq=document.getElementById('f-cat').value;
+  const aq=document.getElementById('f-a').value;
+  const vq=parseFloat(document.getElementById('f-v').value)||0;
+  return TX.filter(t=>
+    (!dm||t.raw.slice(0,7)===dm)&&
+    (!mq||t.m.toLowerCase().includes(mq))&&
+    (!cq||t.cat===cq)&&
+    (!aq||t.a===aq)&&
+    (t.v>=vq)
+  );
+}
+
+function sorted(rows){
+  const r=rows.slice();
+  r.sort((a,b)=>{
+    let x=a[sortKey],y=b[sortKey];
+    if(sortKey==='v'){return (x-y)*sortDir;}
+    x=String(x).toLowerCase();y=String(y).toLowerCase();
+    return x<y?-sortDir:x>y?sortDir:0;
+  });
+  return r;
+}
+
+function renderArrows(){
+  document.querySelectorAll('#txtable th.th-sort').forEach(th=>{
+    const k=th.getAttribute('data-sort');
+    th.querySelector('.arr').textContent = k===sortKey ? (sortDir<0?'▼':'▲') : '';
+  });
+}
+
+function renderPager(total){
+  const pages=Math.max(1,Math.ceil(total/PER));
+  if(page>pages)page=pages;
+  const p=document.getElementById('txpager');
+  if(pages<=1){p.innerHTML='';return;}
+  let h=`<button class="pbtn" ${page===1?'disabled':''} onclick="goPage(${page-1})">‹</button>`;
+  const win=[];
+  for(let i=1;i<=pages;i++){
+    if(i===1||i===pages||Math.abs(i-page)<=1)win.push(i);
+    else if(win[win.length-1]!=='…')win.push('…');
+  }
+  win.forEach(i=>{
+    if(i==='…'){h+=`<span class="pdots">…</span>`;}
+    else{h+=`<button class="pbtn ${i===page?'on':''}" onclick="goPage(${i})">${i}</button>`;}
+  });
+  h+=`<button class="pbtn" ${page===pages?'disabled':''} onclick="goPage(${page+1})">›</button>`;
+  p.innerHTML=h;
+}
+
+function renderTable(){
+  const rows=sorted(applied());
+  const total=rows.length;
+  const sum=rows.reduce((a,b)=>a+b.v,0);
+  document.getElementById('txcount').textContent=total+' txns · '+money(sum);
+  const start=(page-1)*PER;
+  const slice=rows.slice(start,start+PER);
+  const tb=document.getElementById('txbody');
+  const empty=document.getElementById('txempty');
+  const tbl=document.getElementById('txtable');
+  if(total===0){tb.innerHTML='';empty.style.display='block';tbl.querySelector('tbody').style.display='none';}
+  else{empty.style.display='none';tbl.querySelector('tbody').style.display='';}
+  tb.innerHTML=slice.map(t=>`
+    <tr>
+      <td class="n" style="color:var(--tx2);white-space:nowrap">${t.d}</td>
+      <td style="font-weight:500">${t.m}</td>
+      <td><span class="pill" style="background:var(${t.c}-bg);color:var(${t.c})">${t.cat}</span></td>
+      <td style="color:var(--tx2)">${t.a}</td>
+      <td class="tright n" style="font-weight:600">$${t.v.toFixed(2)}</td>
+    </tr>`).join('');
+  renderArrows();
+  renderPager(total);
+}
+
+window.goPage=function(p){page=p;renderTable();window.scrollTo({top:document.getElementById('txtable').offsetTop-20,behavior:'smooth'});};
+
+document.querySelectorAll('#txtable th.th-sort').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k=th.getAttribute('data-sort');
+    if(k===sortKey)sortDir=-sortDir;
+    else{sortKey=k;sortDir=(k==='v'||k==='raw')?-1:1;}
+    page=1;renderTable();
+  });
+});
+['f-date','f-m','f-cat','f-a','f-v'].forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{page=1;renderTable();});
+});
+
+renderTable();
+
+/* Charts */
+window.addEventListener('load',()=>{
+  const teal=cv('--teal'),tx3=cv('--tx3'),line=cv('--line'),coral=cv('--coral');
+  Chart.defaults.font.family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif';
+  Chart.defaults.color=tx3;
+
+  const palette=['--coral','--purple','--blue','--teal','--amber','--pink','--tx3'];
+  function buildMonths(dim){
+    const series=DIMS[dim];
+    return series.map((s,i)=>({
+      label:s.name,
+      data:s.data,
+      backgroundColor:cv(s.color||palette[i%palette.length]),
+      borderRadius:4,
+      maxBarThickness:44,
+      stack:'s'
+    }));
+  }
+  function monthLegend(dim){
+    const series=DIMS[dim];
+    document.getElementById('monthlegend').innerHTML=series.map((s,i)=>
+      `<span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--tx2)">
+        <span class="legend-dot" style="background:${cv(s.color||palette[i%palette.length])}"></span>${s.name}</span>`
+    ).join('');
+  }
+  monthsChart=new Chart(document.getElementById('months'),{
+    type:'bar',
+    data:{labels:DIMS.labels,datasets:buildMonths('category')},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>' '+c.dataset.label+': $'+c.raw.toLocaleString()}}},
+      scales:{x:{stacked:true,grid:{display:false}},
+        y:{stacked:true,grid:{color:line},ticks:{callback:v=>'$'+(v/1000)+'k'}}}}
+  });
+  monthLegend('category');
+  document.getElementById('dim').addEventListener('change',e=>{
+    const dim=e.target.value;
+    monthsChart.data.datasets=buildMonths(dim);
+    monthsChart.update();
+    monthLegend(dim);
+  });
+
+  new Chart(document.getElementById('trend'),{
+    type:'line',
+    data:{labels:['1','3','5','7','9','11','13','15'],
+      datasets:[
+        {label:'This month',data:[13,60,101,1114,1178,1953,2012,2100],borderColor:teal,backgroundColor:cv('--teal-bg'),fill:true,tension:.3,borderWidth:2,pointRadius:0},
+        {label:'Last month',data:[40,120,260,700,900,1180,1400,1590],borderColor:tx3,borderDash:[5,4],fill:false,tension:.3,borderWidth:1.5,pointRadius:0}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:14,boxHeight:2,font:{size:11}}}},
+      scales:{y:{grid:{color:line},ticks:{callback:v=>'$'+v}},x:{grid:{display:false}}}}
+  });
+
+  new Chart(document.getElementById('donut'),{
+    type:'doughnut',
+    data:{labels:CATS.map(c=>c.name),
+      datasets:[{data:CATS.map(c=>c.v),backgroundColor:CATS.map(c=>cv(c.c)),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'66%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': $'+c.raw.toLocaleString()}}}}
+  });
+});
+</script>
+</body>
+</html>

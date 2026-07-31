@@ -69,6 +69,24 @@ def make_handler(state):
                                "application/json")
                     return
                 self._send(200, json.dumps(model).encode("utf-8"), "application/json")
+            elif self.path == "/api/budgets":
+                # Persist edited budgets back to config/budgets.yaml.
+                try:
+                    length = int(self.headers.get("Content-Length") or 0)
+                    body = self.rfile.read(length) if length else b"{}"
+                    budgets = json.loads(body or b"{}")
+                    from src.config_loader import save_budgets
+                    save_budgets(budgets)
+                    # Reflect saved budgets in the in-memory model too.
+                    with state.lock:
+                        if state.model is not None:
+                            state.model["budgets"] = budgets
+                except Exception as e:
+                    self._send(500, json.dumps({"error": str(e)}).encode("utf-8"),
+                               "application/json")
+                    return
+                self._send(200, json.dumps({"ok": True}).encode("utf-8"),
+                           "application/json")
             else:
                 self._send(404, b"not found", "text/plain")
 

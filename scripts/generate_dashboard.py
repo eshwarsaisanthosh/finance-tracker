@@ -1,11 +1,14 @@
 """Generate a self-contained spend dashboard (dashboard.html).
 
-Reads transactions (live from Plaid over the last N days, or from an enriched
-CSV via --from-csv), computes the model, and writes one standalone HTML file
-with the data embedded. No server, no external assets.
+Reads transactions (live from Plaid over the last N days, or from a CSV via
+--from-csv) and writes one standalone HTML file with a normalized model
+embedded. All analytics (KPIs, budgets, monthly stacked, subscriptions,
+category drift, cashflow, insights, the interactive table) are computed in
+the page from that model, so the account checkboxes re-filter everything and
+/api/refresh only needs to return fresh data.
 
 Usage:
-  python -m scripts.generate_dashboard                 # live, last ~100 days
+  python -m scripts.generate_dashboard                 # live, last ~110 days
   python scripts/generate_dashboard.py --from-csv data/transactions.csv
   python scripts/generate_dashboard.py --from-csv f.csv --today 2026-07-16
 """
@@ -18,7 +21,7 @@ from _bootstrap import PROJECT_ROOT
 
 import pandas as pd
 
-from src.enrich import initials
+from src.enrich import categorize, clean_merchant
 from src.processor import filter_expenses
 from src.template_dashboard import render_html
 
@@ -30,19 +33,39 @@ def _keywords():
         from src.config_loader import load_config
         return load_config().get("transfer_filters", {}).get("keywords", [])
     except Exception:
-        return ["PAYMENT TO", "TRANSFER", "CREDIT CARD BILL"]
+        return ["PAYMENT TO", "TRANSFER", "CREDIT CARD BILL", "AUTOPAY"]
 
 
-def _round(x):
-    return int(round(float(x)))
+def _budgets():
+    try:
+        from src.config_loader import load_budgets
+        return load_budgets()
+    except Exception:
+        return {}
+
+
+def _default_account():
+    """Account name to assume when a CSV has no Account column.
+
+    Falls back to the first enabled account in config.yaml (so budgets match),
+    else 'Unknown'.
+    """
+    try:
+        from src.config_loader import load_config
+        cfg = load_config()
+        for a in cfg.get("accounts", []):
+            if a.get("enabled"):
+                return a["name"]
+    except Exception:
+        pass
+    return "Unknown"
 
 
 def compute_model(rows, today=None, keywords=None):
-    """Build the dashboard model.
+    """Build the dashboard model: metadata + budgets + a normalized txn list.
 
-    Month-scoped data (calendar, hero, per-month stats) comes from
-    `dailyByDate` / `detailByDate`. The `by account` and `top categories`
-    panels are a fixed rolling-90-day view (`rolling90`).
+    Every panel in the page is derived client-side from `transactions`, so
+    this stays small and the UI stays consistent under account filtering.
     """
     today = today or datetime.date.today()
     keywords = _keywords() if keywords is None else keywords
@@ -51,9 +74,11 @@ def compute_model(rows, today=None, keywords=None):
         "generatedAt": datetime.datetime.now().isoformat(timespec="minutes"),
         "today": {"y": today.year, "m": today.month, "d": today.day},
         "windowDays": WINDOW_DAYS,
-        "minDate": None, "maxDate": None,
-        "dailyByDate": {}, "detailByDate": {},
-        "rolling90": {"total": 0, "dailyAvg": 0, "categories": [], "accounts": []},
+        "minDate": None,
+        "maxDate": None,
+        "accounts": [],
+        "budgets": _budgets(),
+        "transactions": [],
     }
 
     df = filter_expenses(rows, transfer_keywords=keywords)
@@ -66,56 +91,56 @@ def compute_model(rows, today=None, keywords=None):
     if df.empty:
         return base
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0)
-    df["ymd"] = df["date"].dt.strftime("%Y-%m-%d")
+    df = df[df["amount"] > 0]
+    if df.empty:
+        return base
 
-    # Month-scoped: spend + transactions keyed by full date.
-    daily = df.groupby("ymd")["amount"].sum()
-    base["dailyByDate"] = {k: _round(v) for k, v in daily.items()}
+    txns = []
+    for _, r in df.sort_values("date", ascending=False).iterrows():
+        dt = r["date"]
+        txns.append({
+            "raw": dt.strftime("%Y-%m-%d"),
+            "d": dt.strftime("%b %d"),
+            "m": str(r.get("merchant") or r.get("name") or "Unknown"),
+            "cat": str(r.get("category") or "Services"),
+            "a": str(r.get("account") or "Unknown"),
+            "v": round(float(r.get("amount", 0)), 2),
+        })
 
-    detail = {}
-    for ymd, g in df.groupby("ymd"):
-        items = []
-        for _, r in g.sort_values("amount", ascending=False).iterrows():
-            acct = str(r.get("account", "Unknown"))
-            items.append({
-                "code": initials(acct),
-                "acct": acct,
-                "merchant": str(r.get("merchant") or r.get("name") or "Unknown"),
-                "cat": str(r.get("category") or "Uncategorized"),
-                "amt": _round(r.get("amount", 0)),
-            })
-        detail[ymd] = items
-    base["detailByDate"] = detail
-
+    base["transactions"] = txns
+    base["accounts"] = sorted({t["a"] for t in txns})
     base["minDate"] = df["date"].min().strftime("%Y-%m-%d")
     base["maxDate"] = df["date"].max().strftime("%Y-%m-%d")
-
-    # Rolling 90-day: account + category breakdowns.
-    today_ts = pd.Timestamp(today)
-    win = df[df["date"] >= (today_ts - pd.Timedelta(days=WINDOW_DAYS - 1))]
-    total90 = float(win["amount"].sum())
-    cats = win.groupby("category")["amount"].sum().sort_values(ascending=False).head(5)
-    accs = win.groupby("account")["amount"].sum().sort_values(ascending=False)
-    base["rolling90"] = {
-        "total": _round(total90),
-        "dailyAvg": _round(total90 / WINDOW_DAYS),
-        "categories": [[str(k), _round(v)] for k, v in cats.items()],
-        "accounts": [[str(k), _round(v), initials(str(k))] for k, v in accs.items()],
-    }
     return base
 
 
 def load_from_csv(path):
+    """Load rows from a CSV, enriching any columns the file doesn't carry.
+
+    Handles both the rich 7-column export (Date,Name,Amount,Account,Category,
+    Merchant,ID) and a bare 4-column file (Date,Name,Amount,ID): missing
+    Category is inferred from the name, Merchant is cleaned from the name, and
+    a missing Account defaults to the first enabled account in config.yaml.
+    """
+    default_acct = None
     rows = []
     with open(path, newline="", encoding="utf-8") as f:
-        for r in csv.DictReader(f):
+        reader = csv.DictReader(f)
+        cols = set(reader.fieldnames or [])
+        has_account = "Account" in cols
+        has_category = "Category" in cols
+        has_merchant = "Merchant" in cols
+        if not has_account:
+            default_acct = _default_account()
+        for r in reader:
+            name = (r.get("Name") or "").strip()
             rows.append({
                 "date": r.get("Date"),
-                "name": r.get("Name", ""),
+                "name": name,
                 "amount": float(r.get("Amount") or 0),
-                "account": r.get("Account", "Unknown"),
-                "category": r.get("Category", "Uncategorized"),
-                "merchant": r.get("Merchant", ""),
+                "account": (r.get("Account") if has_account else default_acct) or "Unknown",
+                "category": (r.get("Category") if has_category else categorize(name)) or categorize(name),
+                "merchant": (r.get("Merchant") if has_merchant else clean_merchant(name)) or clean_merchant(name),
                 "id": r.get("ID", ""),
             })
     return rows
@@ -134,7 +159,7 @@ def load_live(days):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="Generate the spend dashboard HTML")
-    p.add_argument("--from-csv", dest="csv", help="Build from an enriched CSV")
+    p.add_argument("--from-csv", dest="csv", help="Build from a CSV")
     p.add_argument("--out", default=str(PROJECT_ROOT / "dashboard.html"))
     p.add_argument("--today", help="Override 'today' (YYYY-MM-DD), for testing")
     p.add_argument("--days", type=int, default=WINDOW_DAYS + 20,
@@ -147,8 +172,9 @@ def main(argv=None):
     model = compute_model(rows, today=today)
     with open(args.out, "w", encoding="utf-8") as f:
         f.write(render_html(model))
-    print(f"Dashboard written to {args.out}  (90d ${model['rolling90']['total']:,}, "
-          f"{len(model['detailByDate'])} active days)")
+    print(f"Dashboard written to {args.out}  "
+          f"({len(model['transactions'])} transactions, "
+          f"{len(model['accounts'])} account(s): {', '.join(model['accounts']) or '—'})")
 
 
 if __name__ == "__main__":

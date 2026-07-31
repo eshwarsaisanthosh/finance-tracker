@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_ROOT / "config" / "config.yaml"
+BUDGETS_PATH = PROJECT_ROOT / "config" / "budgets.yaml"
 
 load_dotenv(PROJECT_ROOT / ".env")
 
@@ -23,6 +24,61 @@ def _load_yaml():
         return {}
     with open(CONFIG_PATH, "r") as f:
         return yaml.safe_load(f) or {}
+
+
+def load_budgets():
+    """Return per-card per-category monthly budgets.
+
+    Shape: {account_name: {category: monthly_target}}. Empty dict if the file
+    is missing, so the dashboard degrades gracefully (no budget panels).
+    """
+    if not BUDGETS_PATH.exists():
+        return {}
+    with open(BUDGETS_PATH, "r") as f:
+        data = yaml.safe_load(f) or {}
+    budgets = data.get("budgets", {}) or {}
+    # Coerce values to numbers; drop anything unparseable.
+    clean = {}
+    for card, cats in budgets.items():
+        if not isinstance(cats, dict):
+            continue
+        clean[card] = {}
+        for cat, amt in cats.items():
+            try:
+                clean[card][cat] = float(amt)
+            except (TypeError, ValueError):
+                continue
+    return clean
+
+
+def save_budgets(budgets):
+    """Persist per-card per-category budgets back to config/budgets.yaml.
+
+    `budgets` is {account_name: {category: monthly_target}}. Values are
+    written as ints where whole, else floats. Overwrites the file's budgets:
+    block while preserving the leading comment header if present.
+    """
+    payload = {"budgets": {
+        card: {cat: (int(v) if float(v).is_integer() else float(v))
+               for cat, v in cats.items()}
+        for card, cats in budgets.items()
+    }}
+    header = ""
+    if BUDGETS_PATH.exists():
+        existing = BUDGETS_PATH.read_text()
+        # keep the comment header (lines before the first non-comment/non-blank)
+        lines = []
+        for ln in existing.splitlines():
+            if ln.strip() and not ln.lstrip().startswith("#"):
+                break
+            lines.append(ln)
+        header = "\n".join(lines).rstrip() + "\n\n" if lines else ""
+    BUDGETS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(BUDGETS_PATH, "w") as f:
+        if header:
+            f.write(header)
+        yaml.safe_dump(payload, f, default_flow_style=False, sort_keys=False,
+                       allow_unicode=True)
 
 
 def _resolve_host(yaml_cfg):
