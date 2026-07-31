@@ -165,8 +165,8 @@ tfoot .flabel{font-size:11px;font-weight:600;letter-spacing:.3px;text-transform:
           <th data-sort="v" class="th-sort tright">Amount <span class="arr"></span></th>
         </tr>
         <tr class="filter-row">
+          <th><select id="f-date" class="fin"><option value="">All dates</option></select></th>
           <th><input id="f-m" class="fin" type="text" placeholder="Search merchant…" style="min-width:120px"></th>
-          <th></th>
           <th><select id="f-cat" class="fin"><option value="">All categories</option></select></th>
           <th><select id="f-a" class="fin"><option value="">All</option></select></th>
           <th><select id="f-v" class="fin"><option value="">Any amount</option><option value="500">≥ $500</option><option value="100">≥ $100</option><option value="50">≥ $50</option><option value="20">≥ $20</option></select></th>
@@ -605,18 +605,24 @@ function renderInsights(){
 /* ===================== Transactions table ===================== */
 var PER=12,sortKey='v',sortDir=-1,tpage=1;
 function fillTableFilters(){
-  var cats=[].concat.apply([],[]);var cs={};TXN.forEach(function(t){cs[t.cat]=1;});
+  var cs={};TXN.forEach(function(t){cs[t.cat]=1;});
   var fc=document.getElementById('f-cat');fc.innerHTML='<option value="">All categories</option>'+Object.keys(cs).sort().map(function(c){return '<option>'+c+'</option>';}).join('');
   var as={};TXN.forEach(function(t){as[t.a]=1;});
   var fa=document.getElementById('f-a');fa.innerHTML='<option value="">All</option>'+Object.keys(as).sort().map(function(a){return '<option>'+a+'</option>';}).join('');
+  var ms={};TXN.forEach(function(t){ms[t.raw.slice(0,7)]=1;});
+  var months=Object.keys(ms).sort().reverse();
+  var fd=document.getElementById('f-date');
+  fd.innerHTML='<option value="">All dates</option>'+months.map(function(m){
+    var y=m.slice(0,4),mo=+m.slice(5,7);return '<option value="'+m+'">'+MONTHS_L[mo]+' '+y+'</option>';}).join('');
 }
 function tableRows(){
   var w=windowBounds();
   var mq=document.getElementById('f-m').value.trim().toLowerCase();
   var cq=document.getElementById('f-cat').value, aq=document.getElementById('f-a').value;
   var vq=parseFloat(document.getElementById('f-v').value)||0;
+  var dq=document.getElementById('f-date').value;
   var rows=acctTxns().filter(function(t){return t.raw>=w.s&&t.raw<=w.e;})
-    .filter(function(t){return (!mq||t.m.toLowerCase().indexOf(mq)>=0)&&(!cq||t.cat===cq)&&(!aq||t.a===aq)&&t.v>=vq;});
+    .filter(function(t){return (!dq||t.raw.slice(0,7)===dq)&&(!mq||t.m.toLowerCase().indexOf(mq)>=0)&&(!cq||t.cat===cq)&&(!aq||t.a===aq)&&t.v>=vq;});
   rows.sort(function(a,b){var x=a[sortKey],y=b[sortKey];if(sortKey==='v')return (x-y)*sortDir;x=String(x).toLowerCase();y=String(y).toLowerCase();return x<y?-sortDir:x>y?sortDir:0;});
   return rows;
 }
@@ -703,7 +709,7 @@ fillTableFilters();
 renderChips();
 document.getElementById('dim').addEventListener('change',renderMonthly);
 document.querySelectorAll('#rangeSeg button').forEach(function(b){b.addEventListener('click',function(){setRange(b.getAttribute('data-r'));});});
-['f-m','f-cat','f-a','f-v'].forEach(function(id){var el=document.getElementById(id);el.addEventListener(el.tagName==='SELECT'?'change':'input',function(){tpage=1;renderTable();});});
+['f-date','f-m','f-cat','f-a','f-v'].forEach(function(id){var el=document.getElementById(id);el.addEventListener(el.tagName==='SELECT'?'change':'input',function(){tpage=1;renderTable();});});
 document.querySelectorAll('#txtable th.th-sort').forEach(function(th){th.addEventListener('click',function(){var k=th.getAttribute('data-sort');if(k===sortKey)sortDir=-sortDir;else{sortKey=k;sortDir=(k==='v'||k==='raw')?-1:1;}tpage=1;renderTable();});});
 (function(){var c=document.getElementById('cStart'),e=document.getElementById('cEnd');
   if(M.minDate)c.value=M.minDate;if(M.maxDate)e.value=M.maxDate;
