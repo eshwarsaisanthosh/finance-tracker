@@ -28,15 +28,15 @@ just consumes a list of transactions.
 
 | Path | Role |
 |------|------|
-| `src/config_loader.py` | Load `.env` + `config.yaml` into one validated dict |
+| `src/config_loader.py` | Load `.env` + `config.yaml`; also `load_budgets()` / `save_budgets()` for `config/budgets.yaml` |
 | `src/plaid_client.py` | Build a Plaid API client (one place) |
 | `src/dates.py` | Resolve a fetch window into `(start, end)` dates |
 | `src/fetcher.py` | Pull transactions (range + sync) across active accounts |
 | `src/processor.py` | Clean transactions into a DataFrame, drop non-spend |
 | `src/summarizer.py` | Turn the DataFrame into the report text |
 | `src/notifier.py` | Send the report via ntfy |
-| `src/enrich.py` | Normalize raw Plaid fields (category, merchant, initials) |
-| `src/template_dashboard.py` | Render the dashboard model into HTML |
+| `src/enrich.py` | Normalize raw Plaid fields; `categorize()` / `clean_merchant()` fallbacks for bare data |
+| `src/template_dashboard.py` | Render the dashboard model into HTML (all analytics run client-side) |
 | `src/main.py` | CLI entry point; orchestrates the report pipeline |
 | `scripts/*` | Setup + maintenance tools (see below) |
 | `scripts/generate_dashboard.py` | Compute the dashboard model, write `dashboard.html` |
@@ -87,9 +87,11 @@ hop — know which shape you're holding.
    string. This is what `fetch_all_transactions` returns.
 
 3. **Normalized row** (`enrich.normalize`, dashboard/export path only):
-   `{date, name, amount, account, category, merchant, id}` — `category`
-   prettified from `personal_finance_category`, `merchant` from
-   `merchant_name` (falls back to `name`).
+   `{date, name, amount, account, category, merchant, id}` — `category` is
+   Plaid's `personal_finance_category` mapped onto the tracker's canonical set
+   (`enrich.canonical_category`), falling back to keyword inference
+   (`enrich.categorize`) when Plaid gives nothing; `merchant` is tidied by
+   `enrich.clean_merchant`.
 
 4. **Cleaned DataFrame** (`processor.filter_expenses`). Drops rows whose `name`
    matches a transfer keyword and any row with `amount <= 0`. Columns are
@@ -97,7 +99,15 @@ hop — know which shape you're holding.
    survive if present.
 
 5. **Model dict** (`generate_dashboard.compute_model`) or **report text**
-   (`summarizer.generate_summary`), computed from the DataFrame.
+   (`summarizer.generate_summary`), computed from the DataFrame. The dashboard
+   model is deliberately thin — `{today, windowDays, minDate, maxDate,
+   accounts, budgets, transactions}` where `transactions` is a normalized list
+   (`{raw, d, m, cat, a, v}`). Every panel (KPIs, budgets, monthly stacked,
+   subscriptions, category drift, cashflow, insights, the table) is computed
+   **in the page** from that array, so the account checkboxes and the range
+   toggle re-filter everything consistently and `/api/refresh` just returns a
+   fresh model. `budgets` is the per-card per-category dict from
+   `config/budgets.yaml`.
 
 Practical rule: `processor` and everything after it expect **dicts** (either
 tagged or normalized). Don't pass raw Plaid objects past the fetcher.
@@ -161,10 +171,18 @@ shared cursor would break with multiple logins.
 `settings.pull_all`, else those with `enabled: true` — and only ones whose
 token actually resolved from `.env`.
 
-**Category enrichment (`enrich.prettify_category`).** Reads
+**Category enrichment (`enrich`).** `prettify_category` reads
 `personal_finance_category.primary` (e.g. `FOOD_AND_DRINK`) and turns it into
-`Food and drink`. Falls back to the legacy `category` list, then
-`Uncategorized`.
+`Food and drink`. `canonical_category` maps that onto the tracker's fixed set
+(`enrich.CATEGORIES`) and, when Plaid gives nothing, falls back to
+`categorize(name)` — keyword matching on the merchant name. Keep
+`enrich.CATEGORIES` in sync with the category keys used in
+`config/budgets.yaml`.
+
+**Budgets (`config/budgets.yaml`).** Per-card per-category monthly targets,
+loaded by `config_loader.load_budgets()` and written by `save_budgets()`.
+`compute_model` attaches them to the model as `budgets`; the served
+`/api/budgets` endpoint persists edits from the dashboard's Edit button.
 
 ---
 
@@ -183,8 +201,10 @@ Entry points:
 python -m src.main                          # report, config default window
 python -m src.main --window mtd --no-notify
 python -m src.main --sync                   # incremental alert mode
-python scripts/generate_dashboard.py        # build dashboard.html (live)
+python scripts/generate_dashboard.py        # build dashboard.html (live), auto-opens browser
+python scripts/generate_dashboard.py --no-open              # build without opening
 python scripts/generate_dashboard.py --from-csv data/transactions.csv
+python scripts/serve_dashboard.py           # live server: Run button + budget saving
 ```
 
 ---

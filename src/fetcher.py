@@ -21,6 +21,18 @@ from src.config_loader import load_config, PROJECT_ROOT
 from src.plaid_client import get_plaid_client
 
 CURSORS_FILE = PROJECT_ROOT / "config" / "cursors.json"
+ACCOUNT_MAP_FILE = PROJECT_ROOT / "config" / "account_map.json"
+
+
+def _load_account_map():
+    """account_id -> friendly sub-account name (e.g. 'WF Checking'). Optional."""
+    try:
+        return json.loads(ACCOUNT_MAP_FILE.read_text())
+    except Exception:
+        return {}
+
+
+_ACCOUNT_MAP = _load_account_map()
 
 
 def get_active_accounts(config, warn=True):
@@ -44,7 +56,13 @@ def get_active_accounts(config, warn=True):
 
 def _to_dict(txn, account_name):
     d = txn.to_dict() if hasattr(txn, "to_dict") else dict(txn)
-    d["account"] = account_name
+    # `group` = the login/institution (config name); `account` = the specific
+    # sub-account (checking / savings / a card), resolved from account_map.json
+    # by account_id. Falls back to the login name when the id isn't mapped, so
+    # a single-account login stays a flat, ungrouped chip.
+    d["group"] = account_name
+    sub = _ACCOUNT_MAP.get(d.get("account_id"))
+    d["account"] = sub or account_name
     if isinstance(d.get("date"), (datetime.date, datetime.datetime)):
         d["date"] = d["date"].isoformat()
     return d

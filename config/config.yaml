@@ -23,11 +23,6 @@ accounts:
 
   # Separate login (own token). This login also exposes checking + savings;
   # account_ids limits it to just the Reflect credit card.
-  - name: "Wells Fargo Reflect"
-    access_token_env: PLAID_TOKEN_WELLSFARGO
-    account_ids: ["KooVPVO0mrHKbBKPZAXBukpp8XDraVfDN6aZQ"]
-    enabled: true
-
   - name: "Citi Bank - Costco"
     access_token_env: PLAID_TOKEN_CITI_BANK_COSTCO
     enabled: true
@@ -43,6 +38,11 @@ accounts:
   - name: "Sofi"
     access_token_env: PLAID_TOKEN_SOFI
     account_ids: ["bOq31aY5P9FLMRaKMBAQu37eM4rkEKC9OvDXw", "5Z9b50PxgriROv9aOmAEtqmJRpx940FVQz4ry"]
+    enabled: true
+
+  - name: "Wells Fargo"
+    access_token_env: PLAID_TOKEN_WELLS_FARGO
+    account_ids: ["nYMgVXw3Qpsn3BDnYbqkfm6aYnw556hjP8zQV", "XYy19r5v4asjr7Pjo8MesMwLgpvOOwUz17ErQ", "pwR9jmLKnpfrz4aryEdvf4aLwg5ppaCAMOYen"]
     enabled: true
 
 settings:

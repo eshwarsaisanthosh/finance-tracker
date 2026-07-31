@@ -156,6 +156,7 @@ def normalize(txns):
                 "name": t.get("name") or "",
                 "amount": float(t.get("amount") or 0),
                 "account": t.get("account") or "Unknown",
+                "group": t.get("group") or t.get("account") or "Unknown",
                 "category": canonical_category(t),
                 "merchant": clean_merchant(merchant_of(t)),
                 "id": t.get("transaction_id") or "",

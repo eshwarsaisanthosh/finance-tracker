@@ -27,6 +27,12 @@ from src.template_dashboard import render_html
 
 WINDOW_DAYS = 90
 
+# Categories that are money movement, not spending — excluded from the dashboard.
+NONSPEND_CATEGORIES = {
+    "Transfer in", "Transfer out", "Loan payments", "Credit card payment",
+    "Payment", "Transfer",
+}
+
 
 def _keywords():
     try:
@@ -97,13 +103,18 @@ def compute_model(rows, today=None, keywords=None):
 
     txns = []
     for _, r in df.sort_values("date", ascending=False).iterrows():
+        cat = str(r.get("category") or "Services")
+        if cat in NONSPEND_CATEGORIES:
+            continue  # transfers / card payments aren't spending
         dt = r["date"]
+        acct = str(r.get("account") or "Unknown")
         txns.append({
             "raw": dt.strftime("%Y-%m-%d"),
             "d": dt.strftime("%b %d"),
             "m": str(r.get("merchant") or r.get("name") or "Unknown"),
-            "cat": str(r.get("category") or "Services"),
-            "a": str(r.get("account") or "Unknown"),
+            "cat": cat,
+            "a": acct,
+            "g": str(r.get("group") or acct),
             "v": round(float(r.get("amount", 0)), 2),
         })
 
@@ -130,15 +141,18 @@ def load_from_csv(path):
         has_account = "Account" in cols
         has_category = "Category" in cols
         has_merchant = "Merchant" in cols
+        has_group = "Group" in cols
         if not has_account:
             default_acct = _default_account()
         for r in reader:
             name = (r.get("Name") or "").strip()
+            acct = (r.get("Account") if has_account else default_acct) or "Unknown"
             rows.append({
                 "date": r.get("Date"),
                 "name": name,
                 "amount": float(r.get("Amount") or 0),
-                "account": (r.get("Account") if has_account else default_acct) or "Unknown",
+                "account": acct,
+                "group": (r.get("Group") if has_group else acct) or acct,
                 "category": (r.get("Category") if has_category else categorize(name)) or categorize(name),
                 "merchant": (r.get("Merchant") if has_merchant else clean_merchant(name)) or clean_merchant(name),
                 "id": r.get("ID", ""),

@@ -15,13 +15,16 @@ cd ~/dev/finance-tracker/finance-tracker
 
 | What | Command |
 |------|---------|
-| Rebuild `dashboard.html` from live data (~last 90 days) | `.venv/bin/python scripts/generate_dashboard.py` |
+| Rebuild `dashboard.html` and open it in a browser | `.venv/bin/python scripts/generate_dashboard.py` |
+| Rebuild without opening a browser | `.venv/bin/python scripts/generate_dashboard.py --no-open` |
 | Rebuild it from a CSV instead of Plaid | `.venv/bin/python scripts/generate_dashboard.py --from-csv data/transactions.csv` |
-| Open the built dashboard | `open dashboard.html` |
-| Live dashboard with a Refresh button (localhost) | `.venv/bin/python scripts/serve_dashboard.py` → visit http://localhost:8000 |
+| Live dashboard — working Run button + budget saving (localhost) | `.venv/bin/python scripts/serve_dashboard.py` → visit http://localhost:8000 |
 | Same, reachable from your phone on home Wi-Fi | `.venv/bin/python scripts/serve_dashboard.py --host 0.0.0.0` → http://<mac-ip>:8000 |
 
 Stop the server with `Ctrl+C`.
+
+`generate_dashboard.py` opens the file automatically; the **Run** button and
+saving budget edits to `config/budgets.yaml` only work via `serve_dashboard.py`.
 
 ---
 
@@ -104,6 +107,6 @@ that syncs to your phone.
 # Everything, this month, no push — a quick "where am I" check
 .venv/bin/python -m src.main --window mtd --pull-all --no-notify
 
-# Rebuild the dashboard and open it
-.venv/bin/python scripts/generate_dashboard.py && open dashboard.html
+# Rebuild the dashboard (opens in your browser automatically)
+.venv/bin/python scripts/generate_dashboard.py
 ```

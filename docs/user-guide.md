@@ -151,6 +151,29 @@ fetch:
 **`transfer_filters`** — keywords used to drop payment/transfer rows from the
 report (e.g. "PAYMENT TO", "TRANSFER"). Add any patterns your bank uses.
 
+### `budgets.yaml` — monthly spending targets
+
+Optional. Sets the budget targets shown in the dashboard's Budgets panel.
+Targets are **per card, per category** — the account name must match a `name`
+from `config.yaml`, and categories are the tracker's own set (Travel, Food and
+drink, Merchandise, Services, Transportation, Medical, Entertainment, Bank
+fees):
+
+```yaml
+budgets:
+  "Delta SkyMiles Platinum":
+    Travel: 1000
+    Food and drink: 400
+  "Wells Fargo Reflect":
+    Travel: 200
+    Food and drink: 300
+```
+
+Omit a category to show no target for it. Edit this file by hand, or use the
+**Edit** button in the dashboard's Budgets card (which writes changes back here
+when running the served dashboard). If the file is missing, the dashboard just
+shows spending without budget bars.
+
 ---
 
 ## 5. Connecting a Bank Account
@@ -288,8 +311,21 @@ push. The old push integration has been retired.
 
 ## 7. The Dashboard
 
-The dashboard is a self-contained HTML file with charts and a transaction table
-covering roughly the last 100 days.
+The dashboard is a self-contained HTML page covering roughly the last 100 days.
+It has an at-a-glance KPI row, a monthly stacked-bar chart (break down by
+category, merchant, or account), a month-pace line, a category donut with
+month-over-month drift, a daily-spend calendar, per-card category budgets, a
+subscriptions panel with renewal flags, a cashflow section (biggest purchases,
+per-account split, travel-vs-everyday), auto-generated insights, and a full
+sortable / filterable / paginated transaction table.
+
+Two controls sit in the top bar and re-filter every panel live:
+
+- **Account checkboxes** — one per account; toggle a card in or out.
+- **Range toggle** — `MTD` · `Last 30` · `Last 90` · `Custom` (the Custom
+  option reveals a start/end date picker). This drives the window-based panels
+  (the "Spent" KPI, By category, biggest purchases, account split, and the
+  table). Budgets and the calendar are always month-scoped by nature.
 
 **Generate it**
 
@@ -297,7 +333,8 @@ covering roughly the last 100 days.
 .venv/bin/python scripts/generate_dashboard.py
 ```
 
-This writes `dashboard.html` to the project root. Open it in any browser.
+This writes `dashboard.html` to the project root and **opens it in your default
+browser automatically**. Pass `--no-open` to skip that (the daily job does).
 
 Options:
 
@@ -307,6 +344,22 @@ Options:
 | `--out <path>` | Write the HTML somewhere other than `dashboard.html` |
 | `--days <n>` | Days of history to pull (live mode; default ~110) |
 | `--today <YYYY-MM-DD>` | Override "today" (for testing) |
+| `--no-open` | Don't auto-open a browser (used by the headless daily job) |
+
+Both data paths are supported. A live pull tags every transaction with its
+account and category. If you build `--from-csv` from a bare export (just
+`Date,Name,Amount,ID`), the category is inferred from the merchant name and the
+account defaults to the first enabled account in `config.yaml` — so per-account
+splitting needs either a live pull or a full 7-column CSV
+(see `export_transactions.py`).
+
+**Setting budgets**
+
+Budgets are **per card, per category**, defined in `config/budgets.yaml`
+(see §4). Edit that file directly, or use the dashboard's **Edit** button in the
+Budgets card. When you're running the served dashboard (below), Save writes your
+changes back to `config/budgets.yaml`; opened as a static file it falls back to
+your browser's local storage.
 
 **Serve it as a live web app (working Refresh button)**
 
